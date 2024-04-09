@@ -44,7 +44,7 @@ public class Impostor {
         // Build a Model
         ModelBuilder modelBuilder = new ModelBuilder();
         modelBuilder.begin();
-        
+
         MeshPartBuilder meshBuilder;
         meshBuilder = modelBuilder.part("impostor",GL20.GL_TRIANGLES,
             VertexAttributes.Usage.Position| VertexAttributes.Usage.TextureCoordinates,

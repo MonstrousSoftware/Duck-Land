@@ -131,13 +131,13 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        builder = new ImpostorBuilder(1024, 1024);
-        builder.createImpostor(lodScenes[0]);
+        builder = new ImpostorBuilder();
+        impostorTexture = builder.createImpostor(lodScenes[0]);
 
         batch = new SpriteBatch();
 
-        impostorTexture = new Texture(Gdx.files.internal("textures/birch.png"));
-        TextureRegion textureRegion = new TextureRegion(impostorTexture);
+        textureRegion = new TextureRegion(impostorTexture);
+        textureRegion.flip(false, true);        // note the texture is upside down, so flip the texture region
 
         Model model = Impostor.createImposterModel(textureRegion, lodScenes[0].modelInstance );
 
@@ -163,7 +163,8 @@ public class GameScreen extends ScreenAdapter {
     private Vector3 up = new Vector3();
     private Quaternion q = new Quaternion();
 
-    @Override
+
+   // @Override
     public void render(float deltaTime) {
         time += deltaTime;
 
@@ -176,9 +177,6 @@ public class GameScreen extends ScreenAdapter {
         if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_2))
             Settings.lodLevel = 2;
 
-
-
-
         // animate camera
 //		camera.position.setFromSpherical(MathUtils.PI/4, time * .3f).scl(cameraDistance);
 //		camera.up.set(Vector3.Y);
@@ -187,12 +185,6 @@ public class GameScreen extends ScreenAdapter {
 //        camController.update();
 
 
-
-        modelBatch.begin(camera);
-        modelBatch.render(instances);
-//        modelBatch.render(groundScene.modelInstance);
-//        modelBatch.render(lodScenes[Settings.lodLevel].modelInstance);
-        modelBatch.end();
 
         sceneManager.getRenderableProviders().clear();
         sceneManager.addScene(groundScene);
@@ -224,7 +216,7 @@ public class GameScreen extends ScreenAdapter {
 //        decalBatch.flush();
 
         batch.begin();
-        batch.draw(impostorTexture, 0, 0);
+        batch.draw(textureRegion, 0, 0);
         batch.end();
 
         gui.render(deltaTime);
