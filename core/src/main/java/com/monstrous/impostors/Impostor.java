@@ -27,11 +27,14 @@ public class Impostor {
     //
     public static Model createImposterModel(TextureRegion textureRegion, ModelInstance instance){
 
-        //we need to know the world size of the actual model
+        // we need to know the world size of the actual model
         BoundingBox boundingBox = new BoundingBox();
         instance.calculateBoundingBox(boundingBox);
         float halfWidth =  0.5f*boundingBox.getWidth();
         float height = boundingBox.getHeight();
+
+        // height seems a bit too low
+        height *= 1.1f;
 
 
 

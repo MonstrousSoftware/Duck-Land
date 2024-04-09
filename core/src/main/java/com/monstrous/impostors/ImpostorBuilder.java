@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -30,8 +31,9 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
 public class ImpostorBuilder {
+    public static final int NUM_ANGLES = 8;
     private static final int SHADOW_MAP_SIZE = 1024;
-    private static final String debugFilePath = null; // = "tmp/lodtest";
+    private static final String debugFilePath = "tmp/lodtest";
 
     private PerspectiveCamera camera;
     private SceneManager sceneManager;
@@ -86,61 +88,77 @@ public class ImpostorBuilder {
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
     }
 
-    public Texture createImpostor(Scene model){
+    public Texture createImpostor(Scene model, int textureSize, Vector2 regionSize){
+
+        Pixmap atlasPixmap = new Pixmap(textureSize, textureSize, Pixmap.Format.RGBA8888);
 
         sceneManager.getRenderableProviders().clear();
         sceneManager.addScene(model);
 
-        sceneManager.update(0.1f);  // important for rendering
-
-        // clear with alpha zero to give transparent background
-        ScreenUtils.clear(Color.CLEAR, true);
-
-        sceneManager.render();
-
-        // we can't create pixmap from an fbo, only from the screen buffer
-        Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
-        Gdx.app.log("pixmap format:", fboPixmap.getFormat().toString());
-
-        if (debugFilePath != null) {
-            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap,0,false);
-        }
-
-
         // get bounding box for model
+        // note: we reuse the same dimensions for all angles assuming the model is somewhat cylindrical
         BoundingBox bbox = new BoundingBox();
         model.modelInstance.calculateBoundingBox(bbox);
-        Vector3 v1 = new Vector3();
-        v1.x = bbox.min.x;
-        v1.y = bbox.min.y;
-        v1.z = bbox.getCenterZ();       // assumes we are looking from front
-        Vector3 v2 = new Vector3();
-        v2.x = bbox.max.x;
-        v2.y = bbox.max.y;
-        v2.z = bbox.getCenterZ();
-        Gdx.app.log("v1", v1.toString());
-        Gdx.app.log("v2", v2.toString());
-
-        // project corners to screen coordinates
+        Vector3 v1 = new Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
+        Vector3 v2 = new Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
         camera.project(v1);
         camera.project(v2);
 
-        Gdx.app.log("v1", v1.toString());
-        Gdx.app.log("v2", v2.toString());
 
-        // clip the desired rectangle to a pixmap
-        Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, (int) (1 + v2.x - v1.x), (int) (1+v2.y - v1.y));
-        if (debugFilePath != null) {
-            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped.png"), clippedPixmap,0,true);
+        for(int angle = 0; angle < NUM_ANGLES; angle++) {
+
+            float viewAngle = (float)angle * (float)Math.PI * 2f / NUM_ANGLES;
+            camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
+            camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
+            camera.position.y = 0; //.3f*cameraDistance;
+
+            //camera.position.setFromSpherical(angle * (float)Math.PI*2f/(float)NUM_ANGLES, .0f).scl(cameraDistance);
+            camera.up.set(Vector3.Y);
+            camera.lookAt(Vector3.Zero);
+            camera.update();
+
+            sceneManager.update(0.1f);  // important for rendering
+
+            // clear with alpha zero to give transparent background
+            ScreenUtils.clear(Color.CLEAR, true);
+
+            sceneManager.render();
+
+            // we can't create pixmap from an fbo, only from the screen buffer
+            Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+            Gdx.app.log("pixmap format:", fboPixmap.getFormat().toString());
+
+            if (debugFilePath != null) {
+                PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap, 0, false);
+            }
+
+
+            // clip the desired rectangle to a pixmap
+            Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, (int) (1 +v2.x - v1.x), (int) (1 + v2.y - v1.y));
+            if (debugFilePath != null) {
+                PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped"+angle+".png"), clippedPixmap, 0, true);
+            }
+
+            // add this clipped image to the atlas
+            int texWidth = textureSize/NUM_ANGLES;
+            int texHeight = texWidth * clippedPixmap.getHeight()/clippedPixmap.getWidth();
+            regionSize.set(texWidth, texHeight);
+            int offsetX = angle * texWidth ;
+            int offsetY = 0;
+            atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
+            atlasPixmap.drawPixmap(clippedPixmap, 0,0, clippedPixmap.getWidth(), clippedPixmap.getHeight(), offsetX, offsetY, texWidth, texHeight);
+
+            fboPixmap.dispose();
+            clippedPixmap.dispose();
         }
 
+        if (debugFilePath != null) {
+            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("atlas.png"), atlasPixmap, 0, false);
+        }
 
-        Texture texture = new Texture(clippedPixmap, true);
-
-
-        fboPixmap.dispose();
-        clippedPixmap.dispose();
+        Texture texture = new Texture(atlasPixmap, true);
+        atlasPixmap.dispose();
         return texture;
     }
 

@@ -52,15 +52,14 @@ public class GameScreen extends ScreenAdapter {
     private Scene[] lodScenes;
     private GUI gui;
     private ImpostorBuilder builder;
-    private TextureRegion textureRegion;
+    private TextureRegion[] textureRegions;
     private Texture impostorTexture;
-//    private Decal decal;
-//    private DecalBatch decalBatch;
     private Array<ModelInstance> instances;
     private ModelInstance instance;
     private SpriteBatch batch;
 
     private ModelBatch modelBatch;
+    Vector2 regionSize = new Vector2();
 
 
     @Override
@@ -132,28 +131,31 @@ public class GameScreen extends ScreenAdapter {
         sceneManager.setSkyBox(skybox);
 
         builder = new ImpostorBuilder();
-        impostorTexture = builder.createImpostor(lodScenes[0]);
+        int textureSize = 2048;
 
-        batch = new SpriteBatch();
+        impostorTexture = builder.createImpostor(lodScenes[0], textureSize, regionSize);
+        Gdx.app.log("region size", ""+regionSize.x+" , "+regionSize.y);
 
-        textureRegion = new TextureRegion(impostorTexture);
-        textureRegion.flip(false, true);        // note the texture is upside down, so flip the texture region
 
-        Model model = Impostor.createImposterModel(textureRegion, lodScenes[0].modelInstance );
+        textureRegions = new TextureRegion[ImpostorBuilder.NUM_ANGLES];
+        int width = textureSize / ImpostorBuilder.NUM_ANGLES;
+        int x = 0;
+        for(int angle = 0; angle < ImpostorBuilder.NUM_ANGLES; angle++) {
+
+            textureRegions[angle] = new TextureRegion(impostorTexture, x, 0, (int)width, (int)regionSize.y);
+            textureRegions[angle].flip(false, true);        // note the texture is upside down, so flip the texture region
+            x+= width;
+        }
+
+        Model model = Impostor.createImposterModel(textureRegions[0], lodScenes[0].modelInstance );
 
         instances = new Array<>();
 
         instance = new ModelInstance(model, 0, 0, 0);
         instances.add( instance );
 
-
-//        decal = Decal.newDecal( new TextureRegion(impostorTexture), true );
-//        decal.setScale(0.05f);
-//        decal.transformationOffset = new Vector2(0, 9f);
-//
-//        decalBatch = new DecalBatch( new CameraGroupStrategy(camera) );
-
         modelBatch = new ModelBatch();
+        batch = new SpriteBatch();
     }
 
 
@@ -162,6 +164,7 @@ public class GameScreen extends ScreenAdapter {
     private Vector3 right = new Vector3();
     private Vector3 up = new Vector3();
     private Quaternion q = new Quaternion();
+    float viewAngle = 0;
 
 
    // @Override
@@ -178,10 +181,14 @@ public class GameScreen extends ScreenAdapter {
             Settings.lodLevel = 2;
 
         // animate camera
-//		camera.position.setFromSpherical(MathUtils.PI/4, time * .3f).scl(cameraDistance);
-//		camera.up.set(Vector3.Y);
-//		camera.lookAt(Vector3.Zero);
-//		camera.update();
+        viewAngle += deltaTime;
+        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
+        camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
+        camera.position.y = .3f*cameraDistance;
+		//camera.position.setFromSpherical( MathUtils.PI/4,  time*.3f).scl(cameraDistance);
+		camera.up.set(Vector3.Y);
+		camera.lookAt(Vector3.Zero);
+		camera.update();
 //        camController.update();
 
 
@@ -205,6 +212,9 @@ public class GameScreen extends ScreenAdapter {
         q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
         instance.transform.set(q).setTranslation(pos);
 
+        float angle = (float)Math.atan2(forward.z, forward.x);
+        int index = (int)(angle / ((float)Math.PI/4f));
+
         if(Settings.lodLevel == Settings.LOD_LEVELS) {
             modelBatch.begin(camera);
             modelBatch.render(instances);
@@ -216,7 +226,7 @@ public class GameScreen extends ScreenAdapter {
 //        decalBatch.flush();
 
         batch.begin();
-        batch.draw(textureRegion, 0, 0);
+        batch.draw(textureRegions[0], 0, 0, regionSize.x/4, regionSize.y/4);//, 50, 150);
         batch.end();
 
         gui.render(deltaTime);
@@ -244,6 +254,7 @@ public class GameScreen extends ScreenAdapter {
         brdfLUT.dispose();
         skybox.dispose();
         gui.dispose();
+        builder.dispose();
     }
 
 }
