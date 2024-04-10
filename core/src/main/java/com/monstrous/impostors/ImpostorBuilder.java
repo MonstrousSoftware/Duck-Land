@@ -52,7 +52,7 @@ public class ImpostorBuilder {
 
         // setup camera
         camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        cameraDistance = 120f;
+        cameraDistance = 100f;  // will be modified later
         camera.near = 0.01f;
         camera.far = 400f;
         camera.position.x = 0;
@@ -92,8 +92,8 @@ public class ImpostorBuilder {
 
     private float setOptimalCameraDistance(Camera cam, float modelWidth, float pixelWidth){
 
-        float centreScreenWidth =  Gdx.graphics.getWidth()/2;
-        Vector3 yardStick = new Vector3(modelWidth, 0, 0);
+        float centre =  Gdx.graphics.getWidth()/2;
+        Vector3 yardStick = new Vector3( modelWidth,0, 0);
         Vector3 projected = new Vector3();
         cam.position.set(0, 0, cameraDistance);
         cam.near = 0f;
@@ -104,8 +104,8 @@ public class ImpostorBuilder {
         projected.set(yardStick);
         cam.project(projected);
 
-        float ratio = (projected.x -centreScreenWidth) / pixelWidth;
-        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centreScreenWidth) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
+        float ratio = (projected.x - centre) / pixelWidth;
+        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centre) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
         cameraDistance *= ratio;
 
         cameraDistance *= 1.1f;   // and add a bit of margin to avoid clipping off extremities
@@ -142,6 +142,12 @@ public class ImpostorBuilder {
 
         if(v2.x < 0 || v2.y < 0) throw new RuntimeException("model goes off screen");
 
+        int clipWidth = (int) (1 +v2.x - v1.x);
+        int clipHeight = (int)(1+v2.y-v1.y);
+
+        int texWidth = textureSize/NUM_ANGLES;
+        int texHeight = texWidth * clipHeight/clipWidth;  // keep aspect ratio
+        regionSize.set(texWidth, texHeight);        // export region size to caller
 
         for(int angle = 0; angle < NUM_ANGLES; angle++) {
 
@@ -174,18 +180,17 @@ public class ImpostorBuilder {
 
 
             // clip the desired rectangle to a pixmap
-            Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, (int) (1 +v2.x - v1.x), (int) (1 + v2.y - v1.y));
+            Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, clipWidth, clipHeight);
             if (debugFilePath != null) {
                 PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped"+angle+".png"), clippedPixmap, 0, true);
             }
 
             // add this clipped image to the atlas which contains screenshots from different angles
             // rotation around Y is shown as 8 images left to right
+            // (we spread horizontally rather than vertically because for a high model like a tree we should get better resolution per decal for the common case of a side view)
             //
-            int texWidth = textureSize/NUM_ANGLES;
-            int texHeight = texWidth * clippedPixmap.getHeight()/clippedPixmap.getWidth();  // keep aspect ratio
-            regionSize.set(texWidth, texHeight);        // export region size to caller
-            int offsetX = angle * texWidth ;
+
+            int offsetX = angle * texWidth;
             int offsetY = 0;
 
             Gdx.app.log("stretch", "from: "+clippedPixmap.getWidth()+" to: "+texWidth);

@@ -144,7 +144,7 @@ public class GameScreen extends ScreenAdapter {
         int x = 0;
         for(int angle = 0; angle < ImpostorBuilder.NUM_ANGLES; angle++) {
 
-            textureRegions[angle] = new TextureRegion(impostorTexture, x, 0, (int)width, (int)regionSize.y);
+            textureRegions[angle] = new TextureRegion(impostorTexture, x, 0, width, (int)regionSize.y);
             textureRegions[angle].flip(false, true);        // note the texture is upside down, so flip the texture region
             x+= width;
         }
