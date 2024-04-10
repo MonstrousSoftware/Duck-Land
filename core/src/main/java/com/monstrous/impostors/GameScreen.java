@@ -58,6 +58,8 @@ public class GameScreen extends ScreenAdapter {
     private Array<ModelInstance> instances;
     private ModelInstance[] treeDecalInstances;  // decals from different angles
     private SpriteBatch batch;
+    private float elevationStep;
+    private int elevations;
 
     private ModelBatch modelBatch;
     Vector2 regionSize = new Vector2();
@@ -76,6 +78,7 @@ public class GameScreen extends ScreenAdapter {
         sceneManager = new SceneManager();
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
+            //sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
             sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
@@ -139,22 +142,35 @@ public class GameScreen extends ScreenAdapter {
         Gdx.app.log("region size", ""+regionSize.x+" , "+regionSize.y);
 
 
-        textureRegions = new TextureRegion[ImpostorBuilder.NUM_ANGLES];
-        int width = textureSize / ImpostorBuilder.NUM_ANGLES;
-        int x = 0;
-        for(int angle = 0; angle < ImpostorBuilder.NUM_ANGLES; angle++) {
+        int numAngles =  ImpostorBuilder.NUM_ANGLES;
+        int width = textureSize / numAngles;
+        int height = (int)regionSize.y;
+        elevations = textureSize / height;
+        elevationStep = 60f/elevations;   // degrees per elevation step
 
-            textureRegions[angle] = new TextureRegion(impostorTexture, x, 0, width, (int)regionSize.y);
-            textureRegions[angle].flip(false, true);        // note the texture is upside down, so flip the texture region
-            x+= width;
-        }
 
-        // create decal instances for each of the texture regions
-        treeDecalInstances = new ModelInstance[ImpostorBuilder.NUM_ANGLES];
-        for(int angle = 0; angle < ImpostorBuilder.NUM_ANGLES; angle++) {
-            Model model = Impostor.createImposterModel(textureRegions[angle], lodScenes[0].modelInstance );
-            ModelInstance instance = new ModelInstance(model, 0, 0, 0);
-            treeDecalInstances[angle] = instance;
+        textureRegions = new TextureRegion[numAngles * elevations];
+        treeDecalInstances = new ModelInstance[numAngles * elevations];
+
+
+        int y = 0;
+
+        for(int elevation = 0; elevation < elevations; elevation++) {
+            int x = 0;
+            for (int angle = 0; angle < numAngles; angle++) {
+
+                TextureRegion region = new TextureRegion(impostorTexture, x, y, width, height);
+                region.flip(false, true);        // note the texture is upside down, so flip the texture region
+                textureRegions[elevation * numAngles + angle] = region;
+                x += width;
+
+                // create decal instances for each texture region
+
+                Model model = Impostor.createImposterModel(region, lodScenes[0].modelInstance);
+                ModelInstance instance = new ModelInstance(model, 0, 0, 0);
+                treeDecalInstances[elevation * numAngles + angle] = instance;
+            }
+            y += height;
         }
 
 
@@ -189,6 +205,7 @@ public class GameScreen extends ScreenAdapter {
 //        viewAngle += deltaTime;
 //        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
 //        camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
+//        //camera.position.y = cameraDistance * (float) Math.sin((time*10f) * MathUtils.degreesToRadians);
 //        camera.position.y = .3f*cameraDistance;
 
 		camera.up.set(Vector3.Y);
@@ -219,12 +236,9 @@ public class GameScreen extends ScreenAdapter {
 
         if(Settings.lodLevel == Settings.LOD_LEVELS) {
             // which decal to use? Depends on viewing angle
-            float angle = (float)Math.toDegrees(Math.atan2(forward.z, forward.x));
-            angle -=90f;
-            if(angle < 0)   // avoid negative angles
-                angle += 360f;
+            index = getViewingIndex(forward);
 
-            index = (int)(ImpostorBuilder.NUM_ANGLES * angle / 360f);
+
 //            Gdx.app.log("view angle:", ""+angle+" index:"+index);
 
             ModelInstance instance = treeDecalInstances[index];
@@ -244,16 +258,37 @@ public class GameScreen extends ScreenAdapter {
             numVerts = instance.model.meshes.first().getNumVertices();
         }
 
-//        decal.lookAt(camera.position, camera.up);
-//        decalBatch.add(decal);
-//        decalBatch.flush();
-
         batch.begin();
-        batch.draw(textureRegions[index], 0, 0, regionSize.x/4, regionSize.y/4);//, 50, 150);
+        batch.draw(textureRegions[index], 0, 0, regionSize.x, regionSize.y);
         batch.end();
 
         gui.render(deltaTime);
     }
+
+
+    private int getViewingIndex(Vector3 forward ){
+        // which decal to use? Depends on viewing angle
+        float angle = (float)Math.toDegrees(Math.atan2(forward.z, forward.x));
+        angle -=90f;
+        if(angle < 0)   // avoid negative angles
+            angle += 360f;
+
+        int indexHorizontal = (int)(ImpostorBuilder.NUM_ANGLES * angle / 360f);
+
+        float h = (float)Math.sqrt(forward.x*forward.x + forward.z*forward.z);
+        float elevationAngle = (float)Math.toDegrees(Math.atan2(forward.y, h));
+
+        int indexVertical = (int)(elevationAngle / elevationStep);
+        if(indexVertical >= elevations)
+            indexVertical = elevations - 1;
+        if(indexVertical < 0)
+            indexVertical = 0;
+
+        int index = indexVertical * ImpostorBuilder.NUM_ANGLES + indexHorizontal;
+        Gdx.app.log("index", ""+index+" horiz: "+indexHorizontal + " vert: "+indexVertical+" elev: "+elevationAngle);
+        return index;
+    }
+
 
     @Override
     public void resize(int width, int height) {

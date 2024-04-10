@@ -31,7 +31,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
 public class ImpostorBuilder {
-    public static final int NUM_ANGLES = 8;
+    public static final int NUM_ANGLES = 16;
     private static final int SHADOW_MAP_SIZE = 2048;
     private static final String debugFilePath = "tmp/lodtest";
 
@@ -105,7 +105,7 @@ public class ImpostorBuilder {
         cam.project(projected);
 
         float ratio = (projected.x - centre) / pixelWidth;
-        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centre) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
+//        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centre) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
         cameraDistance *= ratio;
 
         cameraDistance *= 1.1f;   // and add a bit of margin to avoid clipping off extremities
@@ -142,65 +142,75 @@ public class ImpostorBuilder {
 
         if(v2.x < 0 || v2.y < 0) throw new RuntimeException("model goes off screen");
 
-        int clipWidth = (int) (1 +v2.x - v1.x);
-        int clipHeight = (int)(1+v2.y-v1.y);
+        int clipWidth =  (int)(1 + v2.x - v1.x);
+        int clipHeight = (int)(1 + v2.y - v1.y);
 
         int texWidth = textureSize/NUM_ANGLES;
-        int texHeight = texWidth * clipHeight/clipWidth;  // keep aspect ratio
+        int texHeight = clipHeight; //texWidth * clipHeight/clipWidth;  // keep aspect ratio
         regionSize.set(texWidth, texHeight);        // export region size to caller
 
-        for(int angle = 0; angle < NUM_ANGLES; angle++) {
+        int elevations = textureSize / texHeight;
+        float elevationStep = 90f/elevations;   // degrees per elevation step
 
-            float viewAngle = (float)angle * (float)Math.PI * 2f / NUM_ANGLES;
 
-            camera.position.x = cameraDistance * (float)Math.sin(-viewAngle);
-            camera.position.z = cameraDistance * (float)Math.cos(viewAngle);
-            camera.position.y = bbox.getCenterY();
-            Gdx.app.log("angle", ""+angle+" "+viewAngle+" x:"+camera.position.x+" v1.x: "+v1.x+" v2.x: "+v2.x);
+        for(int elevation = 0; elevation < elevations; elevation++) {
 
-            //camera.position.setFromSpherical(angle * (float)Math.PI*2f/(float)NUM_ANGLES, .0f).scl(cameraDistance);
-            camera.up.set(Vector3.Y);
-            camera.lookAt(Vector3.Zero);
-            camera.update();
+            float elevationAngle =  elevation * elevationStep;
 
-            sceneManager.update(0.1f);  // important for rendering
+            for (int angle = 0; angle < NUM_ANGLES; angle++) {
 
-            // clear with alpha zero to give transparent background
-            ScreenUtils.clear(Color.CLEAR, true);
+                float viewAngle = (float) angle * (float) Math.PI * 2f / NUM_ANGLES;
 
-            sceneManager.render();
+                float alpha = elevationAngle * MathUtils.degreesToRadians;
 
-            // we can't create pixmap from an fbo, only from the screen buffer
-            // or we could work with Texture instead of Pixmap (but Pixmap allows us to write export debug images to file)
-            Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                camera.position.x = cameraDistance * (float) (Math.sin(-viewAngle)*Math.cos(alpha));
+                camera.position.z = cameraDistance * (float) (Math.cos(viewAngle)*Math.cos(alpha));
+                camera.position.y = cameraDistance * (float) Math.sin(alpha);
+                //Gdx.app.log("angle", "" + angle + " " + viewAngle + " x:" + camera.position.x + " v1.x: " + v1.x + " v2.x: " + v2.x);
 
-            if (debugFilePath != null) {
-                PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap, 0, false);
+                camera.up.set(Vector3.Y);
+                camera.lookAt(Vector3.Zero);
+                camera.update();
+
+                sceneManager.update(0.1f);  // important for rendering
+
+                // clear with alpha zero to give transparent background
+                ScreenUtils.clear(Color.CLEAR, true);
+
+                sceneManager.render();
+
+                // we can't create pixmap from an fbo, only from the screen buffer
+                // or we could work with Texture instead of Pixmap (but Pixmap allows us to write export debug images to file)
+//                Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+//                if (debugFilePath != null) {
+//                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap, 0, false);
+//                }
+
+
+                // clip the desired rectangle to a pixmap
+                Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, clipWidth, clipHeight);
+                if (debugFilePath != null) {
+                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped" + angle + ".png"), clippedPixmap, 0, true);
+                }
+
+                // add this clipped image to the atlas which contains screenshots from different angles
+                // rotation around Y is shown as 8 images left to right
+                // (we spread horizontally rather than vertically because for a high model like a tree we should get better resolution per decal for the common case of a side view)
+                //
+
+                int offsetX = angle * texWidth;
+                int offsetY = elevation * texHeight;
+
+                //Gdx.app.log("stretch", "from: " + clippedPixmap.getWidth() + " to: " + texWidth);
+
+                // beware: we are stretching here. we should move the camera to get the desired width
+                atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
+                atlasPixmap.drawPixmap(clippedPixmap, 0, 0, clippedPixmap.getWidth(), clippedPixmap.getHeight(), offsetX, offsetY, texWidth, texHeight);
+
+//                fboPixmap.dispose();
+                clippedPixmap.dispose();
             }
-
-
-            // clip the desired rectangle to a pixmap
-            Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, clipWidth, clipHeight);
-            if (debugFilePath != null) {
-                PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped"+angle+".png"), clippedPixmap, 0, true);
-            }
-
-            // add this clipped image to the atlas which contains screenshots from different angles
-            // rotation around Y is shown as 8 images left to right
-            // (we spread horizontally rather than vertically because for a high model like a tree we should get better resolution per decal for the common case of a side view)
-            //
-
-            int offsetX = angle * texWidth;
-            int offsetY = 0;
-
-            Gdx.app.log("stretch", "from: "+clippedPixmap.getWidth()+" to: "+texWidth);
-
-            // beware: we are stretching here. we should move the camera to get the desired width
-            atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
-            atlasPixmap.drawPixmap(clippedPixmap, 0,0, clippedPixmap.getWidth(), clippedPixmap.getHeight(), offsetX, offsetY, texWidth, texHeight);
-
-            fboPixmap.dispose();
-            clippedPixmap.dispose();
         }
 
         if (debugFilePath != null) {
