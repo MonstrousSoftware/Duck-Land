@@ -12,9 +12,13 @@ public class GUI {
     private Skin skin;
     private Label lodLabel;
     private Label fpsLabel;
+    private Label vertsLabel;
+    private GameScreen screen;
 
 
-    public GUI() {
+    public GUI( GameScreen screen ) {
+        this.screen = screen;
+
         stage = new Stage(new ScreenViewport());
         skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
         rebuild();
@@ -23,37 +27,43 @@ public class GUI {
     private void rebuild() {
         stage.clear();
 
+        String type = "window";
+
         Table screenTable = new Table();
         screenTable.setFillParent(true);
-        screenTable.debug();
 
-        Table statsTable = new Table();
+        screenTable.add(new Label("FPS: ", skin, type)).left().pad(5);
+        fpsLabel = new Label("", skin, type);
+        screenTable.add(fpsLabel).left();
+        screenTable.row();
 
+        screenTable.add(new Label("LOD Level: ", skin, type)).left().pad(5);
+        lodLabel = new Label("", skin, type);
+        screenTable.add(lodLabel).left();
+        screenTable.row();
 
-        statsTable.add(new Label("FPS: ", skin)).left().pad(5);
-        fpsLabel = new Label("", skin);
-        statsTable.add(fpsLabel);
-        statsTable.row();
+        screenTable.add(new Label("vertices: ", skin, type)).left().pad(5);
+        vertsLabel = new Label("", skin, type);
+        screenTable.add(vertsLabel).left();
+        screenTable.row();
 
-        statsTable.add(new Label("LOD Level: ", skin)).left().pad(5);
-        lodLabel = new Label("", skin);
-        statsTable.add(lodLabel);
-        statsTable.row();
-        statsTable.top().left();
-        statsTable.pack();
-
-        screenTable.add(statsTable);
+        screenTable.bottom().left();
         screenTable.pack();
 
-        stage.addActor(statsTable);
+        stage.addActor(screenTable);
     }
 
-    public void render(float deltaTime) {
+    private void updateLabels(){
         if(Settings.lodLevel < Settings.LOD_LEVELS)
             lodLabel.setText(Settings.lodLevel);
         else
             lodLabel.setText("Impostor");
+        vertsLabel.setText( screen.numVerts );
         fpsLabel.setText( Gdx.graphics.getFramesPerSecond());
+    }
+
+    public void render(float deltaTime) {
+        updateLabels();
 
         stage.act(deltaTime);
         stage.draw();

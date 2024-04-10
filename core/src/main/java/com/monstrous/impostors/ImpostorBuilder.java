@@ -32,7 +32,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 public class ImpostorBuilder {
     public static final int NUM_ANGLES = 8;
-    private static final int SHADOW_MAP_SIZE = 1024;
+    private static final int SHADOW_MAP_SIZE = 2048;
     private static final String debugFilePath = "tmp/lodtest";
 
     private PerspectiveCamera camera;
@@ -55,7 +55,9 @@ public class ImpostorBuilder {
         cameraDistance = 40f;
         camera.near = 0.01f;
         camera.far = 400f;
-        camera.position.setFromSpherical(0, .0f).scl(cameraDistance);
+        camera.position.x = 0;
+        camera.position.z = cameraDistance;
+        camera.position.y = 0;
         camera.up.set(Vector3.Y);
         camera.lookAt(Vector3.Zero);
         camera.update();
@@ -104,13 +106,17 @@ public class ImpostorBuilder {
         camera.project(v1);
         camera.project(v2);
 
+        if(v2.x < 0 || v2.y < 0) throw new RuntimeException("model goes off screen");
+
 
         for(int angle = 0; angle < NUM_ANGLES; angle++) {
 
             float viewAngle = (float)angle * (float)Math.PI * 2f / NUM_ANGLES;
-            camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
-            camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
-            camera.position.y = 0; //.3f*cameraDistance;
+
+            camera.position.x = cameraDistance * (float)Math.sin(-viewAngle);
+            camera.position.z = cameraDistance * (float)Math.cos(viewAngle);
+            camera.position.y = bbox.getCenterY();
+            Gdx.app.log("angle", ""+angle+" "+viewAngle+" x:"+camera.position.x);
 
             //camera.position.setFromSpherical(angle * (float)Math.PI*2f/(float)NUM_ANGLES, .0f).scl(cameraDistance);
             camera.up.set(Vector3.Y);
@@ -125,9 +131,8 @@ public class ImpostorBuilder {
             sceneManager.render();
 
             // we can't create pixmap from an fbo, only from the screen buffer
+            // or we could work with Texture instead of Pixmap (but Pixmap allows us to write export debug images to file)
             Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
-            Gdx.app.log("pixmap format:", fboPixmap.getFormat().toString());
 
             if (debugFilePath != null) {
                 PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap, 0, false);
@@ -140,10 +145,12 @@ public class ImpostorBuilder {
                 PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped"+angle+".png"), clippedPixmap, 0, true);
             }
 
-            // add this clipped image to the atlas
+            // add this clipped image to the atlas which contains screenshots from different angles
+            // rotation around Y is shown as 8 images left to right
+            //
             int texWidth = textureSize/NUM_ANGLES;
-            int texHeight = texWidth * clippedPixmap.getHeight()/clippedPixmap.getWidth();
-            regionSize.set(texWidth, texHeight);
+            int texHeight = texWidth * clippedPixmap.getHeight()/clippedPixmap.getWidth();  // keep aspect ratio
+            regionSize.set(texWidth, texHeight);        // export region size to caller
             int offsetX = angle * texWidth ;
             int offsetY = 0;
             atlasPixmap.setFilter(Pixmap.Filter.BiLinear);

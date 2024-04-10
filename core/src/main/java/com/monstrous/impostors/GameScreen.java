@@ -10,9 +10,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
-import com.badlogic.gdx.graphics.g3d.decals.CameraGroupStrategy;
-import com.badlogic.gdx.graphics.g3d.decals.Decal;
-import com.badlogic.gdx.graphics.g3d.decals.DecalBatch;
+import com.badlogic.gdx.graphics.g3d.model.Node;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Quaternion;
@@ -34,6 +32,9 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
 public class GameScreen extends ScreenAdapter {
+
+    public int numVerts = 0;
+
     private static final int SHADOW_MAP_SIZE = 4096;
 
     private SceneManager sceneManager;
@@ -55,7 +56,7 @@ public class GameScreen extends ScreenAdapter {
     private TextureRegion[] textureRegions;
     private Texture impostorTexture;
     private Array<ModelInstance> instances;
-    private ModelInstance instance;
+    private ModelInstance[] treeDecalInstances;  // decals from different angles
     private SpriteBatch batch;
 
     private ModelBatch modelBatch;
@@ -67,7 +68,7 @@ public class GameScreen extends ScreenAdapter {
 
 
 
-        gui = new GUI();
+        gui = new GUI( this );
 
         lodScenes = new Scene[Settings.LOD_LEVELS];
 
@@ -75,9 +76,10 @@ public class GameScreen extends ScreenAdapter {
         sceneManager = new SceneManager();
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
+            sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
+
 
         sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
         groundScene = new Scene(sceneAsset.scene);
@@ -147,12 +149,15 @@ public class GameScreen extends ScreenAdapter {
             x+= width;
         }
 
-        Model model = Impostor.createImposterModel(textureRegions[0], lodScenes[0].modelInstance );
+        // create decal instances for each of the texture regions
+        treeDecalInstances = new ModelInstance[ImpostorBuilder.NUM_ANGLES];
+        for(int angle = 0; angle < ImpostorBuilder.NUM_ANGLES; angle++) {
+            Model model = Impostor.createImposterModel(textureRegions[angle], lodScenes[0].modelInstance );
+            ModelInstance instance = new ModelInstance(model, 0, 0, 0);
+            treeDecalInstances[angle] = instance;
+        }
 
-        instances = new Array<>();
 
-        instance = new ModelInstance(model, 0, 0, 0);
-        instances.add( instance );
 
         modelBatch = new ModelBatch();
         batch = new SpriteBatch();
@@ -181,44 +186,62 @@ public class GameScreen extends ScreenAdapter {
             Settings.lodLevel = 2;
 
         // animate camera
-        viewAngle += deltaTime;
-        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
-        camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
-        camera.position.y = .3f*cameraDistance;
-		//camera.position.setFromSpherical( MathUtils.PI/4,  time*.3f).scl(cameraDistance);
+//        viewAngle += deltaTime;
+//        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
+//        camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
+//        camera.position.y = .3f*cameraDistance;
+
 		camera.up.set(Vector3.Y);
 		camera.lookAt(Vector3.Zero);
 		camera.update();
-//        camController.update();
+        camController.update();
 
 
 
         sceneManager.getRenderableProviders().clear();
         sceneManager.addScene(groundScene);
-        if(Settings.lodLevel < Settings.LOD_LEVELS)
-            sceneManager.addScene( lodScenes[Settings.lodLevel] );
+        if(Settings.lodLevel < Settings.LOD_LEVELS) {
+            sceneManager.addScene(lodScenes[Settings.lodLevel]);
 
-
+            numVerts = lodScenes[Settings.lodLevel].modelInstance.model.meshes.first().getNumVertices();
+        }
         // render
         ScreenUtils.clear(Color.SKY, true);
         sceneManager.update(deltaTime);
         sceneManager.render();
 
-        // get billboard to face the camera
-        instance.transform.getTranslation(pos);         // get instance position
-        forward.set(camera.position).sub(pos).nor();        // vector towards camera
-        right.set(camera.up).crs(forward).nor();
-        up.set(forward).crs(right).nor();
-        q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
-        instance.transform.set(q).setTranslation(pos);
 
-        float angle = (float)Math.atan2(forward.z, forward.x);
-        int index = (int)(angle / ((float)Math.PI/4f));
+
+        int index = 0;
+
+
+
 
         if(Settings.lodLevel == Settings.LOD_LEVELS) {
+            // which decal to use? Depends on viewing angle
+            float angle = (float)Math.toDegrees(Math.atan2(forward.z, forward.x));
+            angle -=90f;
+            if(angle < 0)   // avoid negative angles
+                angle += 360f;
+
+            index = (int)(ImpostorBuilder.NUM_ANGLES * angle / 360f);
+//            Gdx.app.log("view angle:", ""+angle+" index:"+index);
+
+            ModelInstance instance = treeDecalInstances[index];
+
+            // get billboard to face the camera
+            instance.transform.getTranslation(pos);         // get instance position
+            forward.set(camera.position).sub(pos).nor();        // vector towards camera
+            right.set(camera.up).crs(forward).nor();
+            up.set(forward).crs(right).nor();
+            q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
+            instance.transform.set(q).setTranslation(pos);
+
             modelBatch.begin(camera);
-            modelBatch.render(instances);
+            modelBatch.render(instance);
             modelBatch.end();
+
+            numVerts = instance.model.meshes.first().getNumVertices();
         }
 
 //        decal.lookAt(camera.position, camera.up);
@@ -226,7 +249,7 @@ public class GameScreen extends ScreenAdapter {
 //        decalBatch.flush();
 
         batch.begin();
-        batch.draw(textureRegions[0], 0, 0, regionSize.x/4, regionSize.y/4);//, 50, 150);
+        batch.draw(textureRegions[index], 0, 0, regionSize.x/4, regionSize.y/4);//, 50, 150);
         batch.end();
 
         gui.render(deltaTime);
