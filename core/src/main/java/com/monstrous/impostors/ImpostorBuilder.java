@@ -52,7 +52,7 @@ public class ImpostorBuilder {
 
         // setup camera
         camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        cameraDistance = 40f;
+        cameraDistance = 120f;
         camera.near = 0.01f;
         camera.far = 400f;
         camera.position.x = 0;
@@ -90,7 +90,38 @@ public class ImpostorBuilder {
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
     }
 
+    private float setOptimalCameraDistance(Camera cam, float modelWidth, float pixelWidth){
+
+        float centreScreenWidth =  Gdx.graphics.getWidth()/2;
+        Vector3 yardStick = new Vector3(modelWidth, 0, 0);
+        Vector3 projected = new Vector3();
+        cam.position.set(0, 0, cameraDistance);
+        cam.near = 0f;
+        cam.far = cameraDistance*10f;
+        cam.up.set(Vector3.Y);
+        cam.lookAt(Vector3.Zero);
+        cam.update();
+        projected.set(yardStick);
+        cam.project(projected);
+
+        float ratio = (projected.x -centreScreenWidth) / pixelWidth;
+        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centreScreenWidth) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
+        cameraDistance *= ratio;
+
+        cameraDistance *= 1.1f;   // and add a bit of margin to avoid clipping off extremities
+        cam.position.set(0, 0, cameraDistance);
+        cam.near = 0.1f*cameraDistance;
+        cam.far = cameraDistance*10f;
+        cam.up.set(Vector3.Y);
+        cam.lookAt(Vector3.Zero);
+        cam.update();
+
+        return cameraDistance;
+    }
+
+
     public Texture createImpostor(Scene model, int textureSize, Vector2 regionSize){
+
 
         Pixmap atlasPixmap = new Pixmap(textureSize, textureSize, Pixmap.Format.RGBA8888);
 
@@ -101,6 +132,9 @@ public class ImpostorBuilder {
         // note: we reuse the same dimensions for all angles assuming the model is somewhat cylindrical
         BoundingBox bbox = new BoundingBox();
         model.modelInstance.calculateBoundingBox(bbox);
+
+        cameraDistance = setOptimalCameraDistance(camera, bbox.getWidth(), textureSize/NUM_ANGLES);
+
         Vector3 v1 = new Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
         Vector3 v2 = new Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
         camera.project(v1);
@@ -116,7 +150,7 @@ public class ImpostorBuilder {
             camera.position.x = cameraDistance * (float)Math.sin(-viewAngle);
             camera.position.z = cameraDistance * (float)Math.cos(viewAngle);
             camera.position.y = bbox.getCenterY();
-            Gdx.app.log("angle", ""+angle+" "+viewAngle+" x:"+camera.position.x);
+            Gdx.app.log("angle", ""+angle+" "+viewAngle+" x:"+camera.position.x+" v1.x: "+v1.x+" v2.x: "+v2.x);
 
             //camera.position.setFromSpherical(angle * (float)Math.PI*2f/(float)NUM_ANGLES, .0f).scl(cameraDistance);
             camera.up.set(Vector3.Y);
@@ -153,6 +187,10 @@ public class ImpostorBuilder {
             regionSize.set(texWidth, texHeight);        // export region size to caller
             int offsetX = angle * texWidth ;
             int offsetY = 0;
+
+            Gdx.app.log("stretch", "from: "+clippedPixmap.getWidth()+" to: "+texWidth);
+
+            // beware: we are stretching here. we should move the camera to get the desired width
             atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
             atlasPixmap.drawPixmap(clippedPixmap, 0,0, clippedPixmap.getWidth(), clippedPixmap.getHeight(), offsetX, offsetY, texWidth, texHeight);
 
