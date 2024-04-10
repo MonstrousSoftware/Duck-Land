@@ -234,6 +234,8 @@ public class GameScreen extends ScreenAdapter {
 
 
 
+
+
         if(Settings.lodLevel == Settings.LOD_LEVELS) {
             // which decal to use? Depends on viewing angle
             index = getViewingIndex(forward);
@@ -285,7 +287,7 @@ public class GameScreen extends ScreenAdapter {
             indexVertical = 0;
 
         int index = indexVertical * ImpostorBuilder.NUM_ANGLES + indexHorizontal;
-        Gdx.app.log("index", ""+index+" horiz: "+indexHorizontal + " vert: "+indexVertical+" elev: "+elevationAngle);
+        //Gdx.app.log("index", ""+index+" horiz: "+indexHorizontal + " vert: "+indexVertical+" elev: "+elevationAngle);
         return index;
     }
 

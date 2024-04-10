@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
@@ -31,7 +32,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
 public class ImpostorBuilder {
-    public static final int NUM_ANGLES = 16;
+    public static final int NUM_ANGLES = 10;
     private static final int SHADOW_MAP_SIZE = 2048;
     private static final String debugFilePath = "tmp/lodtest";
 
@@ -145,6 +146,12 @@ public class ImpostorBuilder {
         int clipWidth =  (int)(1 + v2.x - v1.x);
         int clipHeight = (int)(1 + v2.y - v1.y);
 
+//        v1.x -= clipWidth*0.2f;
+//        v1.y -= clipHeight*0.1f;
+//        clipWidth *= 1.4;
+//        clipHeight *= 1.2;
+
+
         int texWidth = textureSize/NUM_ANGLES;
         int texHeight = clipHeight; //texWidth * clipHeight/clipWidth;  // keep aspect ratio
         regionSize.set(texWidth, texHeight);        // export region size to caller
@@ -152,6 +159,7 @@ public class ImpostorBuilder {
         int elevations = textureSize / texHeight;
         float elevationStep = 90f/elevations;   // degrees per elevation step
 
+        Rectangle rect = new Rectangle();
 
         for(int elevation = 0; elevation < elevations; elevation++) {
 
@@ -172,6 +180,10 @@ public class ImpostorBuilder {
                 camera.lookAt(Vector3.Zero);
                 camera.update();
 
+
+                //findScreenExtents(bbox, rect);
+
+
                 sceneManager.update(0.1f);  // important for rendering
 
                 // clear with alpha zero to give transparent background
@@ -190,9 +202,11 @@ public class ImpostorBuilder {
 
                 // clip the desired rectangle to a pixmap
                 Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, clipWidth, clipHeight);
-                if (debugFilePath != null) {
-                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped" + angle + ".png"), clippedPixmap, 0, true);
-                }
+
+                //Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+//                if (debugFilePath != null) {
+//                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped" + elevation+"x"+angle + ".png"), clippedPixmap, 0, true);
+//                }
 
                 // add this clipped image to the atlas which contains screenshots from different angles
                 // rotation around Y is shown as 8 images left to right
@@ -206,7 +220,7 @@ public class ImpostorBuilder {
 
                 // beware: we are stretching here. we should move the camera to get the desired width
                 atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
-                atlasPixmap.drawPixmap(clippedPixmap, 0, 0, clippedPixmap.getWidth(), clippedPixmap.getHeight(), offsetX, offsetY, texWidth, texHeight);
+                atlasPixmap.drawPixmap(clippedPixmap, 0, 0,texWidth, texHeight, offsetX, offsetY, texWidth, texHeight);
 
 //                fboPixmap.dispose();
                 clippedPixmap.dispose();
@@ -220,6 +234,45 @@ public class ImpostorBuilder {
         Texture texture = new Texture(atlasPixmap, true);
         atlasPixmap.dispose();
         return texture;
+    }
+
+
+    private void findScreenExtents(BoundingBox bbox, Rectangle rect) {
+
+        Vector3[] corners = new Vector3[8];
+        for(int i = 0; i < 8; i++)
+            corners[i] = new Vector3();
+        bbox.getCorner000(corners[0]);
+        bbox.getCorner001(corners[1]);
+        bbox.getCorner010(corners[2]);
+        bbox.getCorner011(corners[3]);
+        bbox.getCorner100(corners[4]);
+        bbox.getCorner101(corners[5]);
+        bbox.getCorner110(corners[6]);
+        bbox.getCorner111(corners[7]);
+
+        Vector2 min = new Vector2(999, 999);
+        Vector2 max = new Vector2(-999, -999);
+
+        for(int i = 0; i < 8; i++){
+            Vector3 v = corners[i];
+            camera.project(v);
+            if(v.x < min.x)
+                min.x = v.x;
+            if(v.x > max.x)
+                max.x = v.x;
+            if(v.y < min.y)
+                min.y = v.y;
+            if(v.y > max.y)
+                max.y = v.y;
+        }
+        rect.x = min.x;
+        rect.y = min.y;
+        rect.width = 1 + max.x - min.x;
+        rect.height = 1 + max.y - min.y;
+
+        Gdx.app.log("rect", "rect:" + rect.toString());
+
     }
 
     public void dispose() {

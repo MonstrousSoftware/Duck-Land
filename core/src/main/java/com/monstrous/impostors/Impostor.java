@@ -35,7 +35,8 @@ public class Impostor {
 
         // height seems a bit too low
         // todo
-        height *= 1.1f;
+        halfWidth *= 1.2f;
+        height *= 1.2f;
 
 
 
