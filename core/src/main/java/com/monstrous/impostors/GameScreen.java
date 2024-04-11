@@ -42,7 +42,7 @@ public class GameScreen extends ScreenAdapter {
     public int numVertices = 0;
     public int instanceCount = 1;
 
-    public static final int AREA_LENGTH = 1000;
+    public static final int AREA_LENGTH = 500;
     private static final int SEPARATION_DISTANCE = 20;
     private static final int SHADOW_MAP_SIZE = 4096;
 
@@ -211,7 +211,7 @@ public class GameScreen extends ScreenAdapter {
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
                 makeInstanced(lodScenes[lod].modelInstance, positions);
 
-            makeInstanced(treeDecalInstances[0], positions);    // instances for decal
+            makeInstancedDecals(treeDecalInstances[0], positions);    // instances for decal
         }
         else
             instanceCount = 1;
@@ -341,14 +341,13 @@ public class GameScreen extends ScreenAdapter {
 
         // add matrix per instance
         mesh.enableInstancedRendering(true, instanceCount,
-//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
-//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
-//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
-//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3),
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
+            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
+            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
+            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
+            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3)   );
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
-        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);   // 16 floats for the matrix
+        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
 
         // fill instance data buffer
         MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
@@ -360,7 +359,26 @@ public class GameScreen extends ScreenAdapter {
             instanceTransform.setToRotationRad(Vector3.Y, angle);
             instanceTransform.setTranslation(pos);
                           // transpose matrix for GLSL
-//            offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
+            offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
+        }
+
+        ((Buffer)offsets).position(0);      // rewind float buffer to start
+        mesh.setInstanceData(offsets);
+    }
+
+    private void makeInstancedDecals( ModelInstance modelInstance, Array<Vector3> positions ) {
+
+        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+
+        // add matrix per instance
+        mesh.enableInstancedRendering(true, instanceCount,
+            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
+
+        // Create offset FloatBuffer that will contain instance data to pass to shader
+        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);
+
+        // fill instance data buffer
+        for(Vector3 pos: positions) {
             offsets.put(new float[] { pos.x, pos.y, pos.z, 0f });
         }
 

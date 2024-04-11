@@ -57,6 +57,8 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                     throw new GdxRuntimeException("Shader compile error: " + program.getLog());
                 }
                 init(program, renderable);
+                ShaderProgram.prependVertexCode = null;
+                ShaderProgram.prependFragmentCode = null;
             }
 
             @Override
