@@ -13,6 +13,7 @@ public class GUI {
     private Label lodLabel;
     private Label fpsLabel;
     private Label vertsLabel;
+    private Label instancesLabel;
     private GameScreen screen;
 
 
@@ -47,6 +48,11 @@ public class GUI {
         screenTable.add(vertsLabel).left();
         screenTable.row();
 
+        screenTable.add(new Label("instances: ", skin, type)).left().pad(5);
+        instancesLabel = new Label("", skin, type);
+        screenTable.add(instancesLabel).left();
+        screenTable.row();
+
         screenTable.bottom().left();
         screenTable.pack();
 
@@ -58,7 +64,8 @@ public class GUI {
             lodLabel.setText(Settings.lodLevel);
         else
             lodLabel.setText("Impostor");
-        vertsLabel.setText( screen.numVerts );
+        vertsLabel.setText( screen.numVertices );
+        instancesLabel.setText( screen.instanceCount );
         fpsLabel.setText( Gdx.graphics.getFramesPerSecond());
     }
 
