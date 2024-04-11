@@ -68,6 +68,11 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
                 final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
                 program.setUniformi("u_texture", unit);
+                float[] camPos = new float[3];
+                camPos[0] = camera.position.x;
+                camPos[1] = camera.position.y;
+                camPos[2] = camera.position.z;
+                program.setUniform3fv("u_camPos", camPos,0,3);
 
 //                context.setDepthTest(GL32.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
