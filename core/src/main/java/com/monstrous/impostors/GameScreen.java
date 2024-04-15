@@ -64,6 +64,7 @@ public class GameScreen extends ScreenAdapter {
     private TextureRegion[] textureRegions;
     private Texture impostorTexture;
     private ModelInstance[] treeDecalInstances;  // decals from different angles
+    private TextureRegion atlasRegion;
     private SpriteBatch batch;
     private float elevationStep;
     private int elevations;
@@ -166,6 +167,8 @@ public class GameScreen extends ScreenAdapter {
         textureRegions = new TextureRegion[numAngles * elevations];
         treeDecalInstances = new ModelInstance[numAngles * elevations];
 
+
+        atlasRegion = new TextureRegion(impostorTexture, 0f, 0f, 1.0f, 1.0f);
 
         int y = 0;
 
@@ -378,8 +381,11 @@ public class GameScreen extends ScreenAdapter {
         FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);
 
         // fill instance data buffer
+        MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
+
         for(Vector3 pos: positions) {
-            offsets.put(new float[] { pos.x, pos.y, pos.z, 0f });
+            float angle = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
+            offsets.put(new float[] { pos.x, pos.y, pos.z, angle });
         }
 
         ((Buffer)offsets).position(0);      // rewind float buffer to start

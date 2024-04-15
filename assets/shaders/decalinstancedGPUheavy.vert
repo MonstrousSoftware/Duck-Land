@@ -1,3 +1,5 @@
+// NOT USED
+
 uniform mat4 u_projViewTrans;
 uniform vec3 u_camPos;
 
