@@ -66,6 +66,8 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 this.context = context;
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
+                //program.setUniformMatrix("u_viewTrans", camera.view);
+                //program.setUniformMatrix("u_projViewTrans", camera.combined);
                 final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
                 program.setUniformi("u_texture", unit);
                 float[] camPos = new float[3];

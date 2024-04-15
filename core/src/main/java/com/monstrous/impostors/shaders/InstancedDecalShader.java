@@ -21,7 +21,7 @@ public class InstancedDecalShader extends BaseShader {
     @Override
     public void begin(Camera camera, RenderContext context) {
         program.bind();
-        program.setUniformMatrix("u_projTrans", camera.combined);
+        program.setUniformMatrix("u_projViewTrans", camera.combined);
         program.setUniformi("u_texture", 0);
         //                context.setDepthTest(GL32.GL_LESS);
     }
