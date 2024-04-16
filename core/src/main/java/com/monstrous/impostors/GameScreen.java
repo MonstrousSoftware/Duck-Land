@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.monstrous.impostors.gui.GUI;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
@@ -25,10 +26,7 @@ import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
 import net.mgsx.gltf.scene3d.lights.DirectionalLightEx;
 import net.mgsx.gltf.scene3d.lights.DirectionalShadowLight;
-import net.mgsx.gltf.scene3d.scene.Scene;
-import net.mgsx.gltf.scene3d.scene.SceneAsset;
-import net.mgsx.gltf.scene3d.scene.SceneManager;
-import net.mgsx.gltf.scene3d.scene.SceneSkybox;
+import net.mgsx.gltf.scene3d.scene.*;
 import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 import java.nio.Buffer;
@@ -38,10 +36,10 @@ import java.nio.FloatBuffer;
 public class GameScreen extends ScreenAdapter {
 
     // members displayed by gui
-    public int numVertices = 0;
+    public Statistic[] statistics;
     public int instanceCount = 1;
 
-    public static final int AREA_LENGTH = 2500;
+    public static final int AREA_LENGTH = 9500;
     private static final int SEPARATION_DISTANCE = 20;
     private static final int SHADOW_MAP_SIZE = 4096;
 
@@ -54,7 +52,7 @@ public class GameScreen extends ScreenAdapter {
     private Cubemap specularCubemap;
     private Texture brdfLUT;
     private SceneSkybox skybox;
-    private DirectionalLightEx light;
+    private DirectionalShadowLight light;
     private CameraInputController camController;
     private float cameraDistance;
     private Scene[] lodScenes;
@@ -68,9 +66,12 @@ public class GameScreen extends ScreenAdapter {
     private float elevationStep;
     private int elevations;
     private Array<Vector2> points;
+    private Array<Vector4> allPositions;
+    private Array<Vector4>[] positions;
 
     private ModelBatch modelBatch;
     Vector2 regionSize = new Vector2();
+    private CascadeShadowMap csm;
 
 
     @Override
@@ -79,6 +80,10 @@ public class GameScreen extends ScreenAdapter {
         if (Gdx.gl30 == null) {
             throw new GdxRuntimeException("GLES 3.0 profile required for this programme.");
         }
+
+        statistics = new Statistic[Settings.LOD_LEVELS+1];
+        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
+            statistics[lod] = new Statistic();
 
         gui = new GUI( this );
 
@@ -117,13 +122,25 @@ public class GameScreen extends ScreenAdapter {
         InputMultiplexer im = new InputMultiplexer();
         Gdx.input.setInputProcessor(im);
         camController = new CameraInputController(camera);
+        camController.scrollFactor = -1f;   // fast zoom
+        im.addProcessor(gui.stage);
         im.addProcessor(camController);
 
-        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 0.001f));
+        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 0.01f));
+
+        if(Settings.cascadedShadows) {
+            csm = new CascadeShadowMap(2);
+            sceneManager.setCascadeShadowMap(csm);
+        }
 
         // setup light
+        // set the light parameters so that your area of interest is in the shadow light frustum
+        // but keep it reasonably tight to keep sharper shadows
 
-        light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(25,25,5,40);
+        float farPlane = 300;
+        float nearPlane = 0;
+        float VP_SIZE = 300f;
+        light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(VP_SIZE,VP_SIZE,nearPlane,farPlane);
 
         light.direction.set(1, -3, 1).nor();
         light.color.set(Color.WHITE);
@@ -167,6 +184,7 @@ public class GameScreen extends ScreenAdapter {
         treeDecalInstances = new ModelInstance[numAngles * elevations];
 
 
+
         atlasRegion = new TextureRegion(impostorTexture, 0f, 0f, 1.0f, 1.0f);
 
         int y = 0;
@@ -189,7 +207,7 @@ public class GameScreen extends ScreenAdapter {
             }
             y += height;
         }
-
+        treeDecalInstances[0].userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
 
 
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );
@@ -199,38 +217,92 @@ public class GameScreen extends ScreenAdapter {
         MathUtils.random.setSeed(1234);         // fix the random distribution to always be identical
         Rectangle area = new Rectangle(1, 1, AREA_LENGTH, AREA_LENGTH);
         points = PoissonDistribution.generatePoissonDistribution(SEPARATION_DISTANCE, area);
+        instanceCount = points.size;
 
         // convert 2d points to 3d positions
-        Array<Vector3> positions = new Array<>();
+
+        allPositions = new Array<>();
+        MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
         for(Vector2 point : points ) {
-            positions.add( new Vector3( point.x - AREA_LENGTH/2f, 0, point.y - AREA_LENGTH/2f));
+            float angleY = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
+            Vector4 position = new Vector4( point.x - AREA_LENGTH/2f, 0, point.y - AREA_LENGTH/2f, angleY);
+            allPositions.add( position );
         }
 
+        positions = new Array[4];
+        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
+            positions[lod] = new Array<>();
+
+        allocateLodInstances();
+
         if(Settings.multiple) {
-            instanceCount = positions.size;
+            //instanceCount = points.size;
 
             // instances for every LOD model
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
-                makeInstanced(lodScenes[lod].modelInstance, positions);
+                makeInstanced(lodScenes[lod].modelInstance, positions[lod]);
 
-            makeInstancedDecals(treeDecalInstances[0], positions);    // instances for decal
-            treeDecalInstances[0].userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
+            makeInstancedDecals(treeDecalInstances[0], positions[3]);    // instances for decal
+            updateInstanceData();
         }
-        else
-            instanceCount = 1;
+        //else
+            //instanceCount = 1;
 
-
+        Settings.lodLevel = -1;
 
     }
 
 
     private Vector3 pos = new Vector3();
+
+    private void allocateLodInstances() {
+        float scale = AREA_LENGTH;
+        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
+            positions[lod].clear();
+
+        for (Vector4 position : allPositions) {
+            pos.set(position.x, position.y, position.z);
+//            if(!camera.frustum.sphereInFrustum(pos, 2f))
+//                continue;
+            float distance = pos.dst(camera.position);
+            if (distance < Settings.lod1Distance * scale  )
+                positions[0].add(position);
+            else if ( distance < Settings.lod2Distance * scale )
+                positions[1].add(position);
+            else if (distance < Settings.impostorDistance * scale )
+                positions[2].add(position);
+            else
+                positions[3].add(position);
+        }
+        //Gdx.app.log("Distribution:", "LOD0: " + positions[0].size + " LOD1: " + positions[1].size + " LOD2: " + positions[2].size + " IMP: " + positions[3].size);
+
+        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++){
+            statistics[lod].instanceCount = positions[lod].size;
+            if(lod < Settings.LOD_LEVELS)
+                statistics[lod].vertexCount = lodScenes[lod].modelInstance.model.meshes.first().getNumVertices();
+            else
+                statistics[lod].vertexCount = treeDecalInstances[0].model.meshes.first().getNumVertices();
+        }
+        //instanceCount = points.size;
+    }
+
+    private void updateInstanceData() {
+
+        // instances for every LOD model
+        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+            updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
+
+        updateInstancedDecals(treeDecalInstances[0], positions[3]);    // instances for decal
+    }
+
+
+
     private Vector3 forward = new Vector3();
     private Vector3 right = new Vector3();
     private Vector3 up = new Vector3();
     private Quaternion q = new Quaternion();
 
-
+    private float lodUpdate = 0.5f;
 
    // @Override
     public void render(float deltaTime) {
@@ -246,6 +318,16 @@ public class GameScreen extends ScreenAdapter {
         if(Gdx.input.isKeyJustPressed(Input.Keys.M))
             Settings.multiple = !Settings.multiple;
 
+
+        lodUpdate -= deltaTime;     // todo or if camera moved
+        if(lodUpdate < 0) {
+            lodUpdate = 0.5f;
+            allocateLodInstances();
+            updateInstanceData();
+        }
+
+
+
         // animate camera
 //        viewAngle += deltaTime;
 //        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
@@ -258,14 +340,25 @@ public class GameScreen extends ScreenAdapter {
 		camera.update();
         camController.update();
 
-
+        if(Settings.cascadedShadows) {
+            csm.setCascades(sceneManager.camera, light, 0, 10f);
+        }
+        else
+            light.setCenter(camera.position); // keep shadow light on player so that we have shadows
 
         sceneManager.getRenderableProviders().clear();
         sceneManager.addScene(groundScene);
-        if(Settings.lodLevel < Settings.LOD_LEVELS) {
+
+        if(Settings.lodLevel < 0) { // mixed levels, add all LOD instances
+            for(int lod = 0; lod < Settings.LOD_LEVELS; lod++){
+                sceneManager.addScene(lodScenes[lod]);
+            }
+
+        }
+        else if(Settings.lodLevel < Settings.LOD_LEVELS) {      // one specific LOD level
             sceneManager.addScene(lodScenes[Settings.lodLevel]);
 
-            numVertices = lodScenes[Settings.lodLevel].modelInstance.model.meshes.first().getNumVertices();
+            // numVertices = lodScenes[Settings.lodLevel].modelInstance.model.meshes.first().getNumVertices();
         }
         // render
         ScreenUtils.clear(Color.SKY, true);
@@ -275,7 +368,7 @@ public class GameScreen extends ScreenAdapter {
         int index = 0;
 
 
-        if(Settings.lodLevel == Settings.LOD_LEVELS) {
+        if(Settings.lodLevel == Settings.LOD_LEVELS || Settings.lodLevel < 0 ) {      // impostors
             if(Settings.multiple)
                 index = 0;          // test
             else
@@ -301,7 +394,7 @@ public class GameScreen extends ScreenAdapter {
             modelBatch.render(instance);
             modelBatch.end();
 
-            numVertices = instance.model.meshes.first().getNumVertices();
+            //numVertices = instance.model.meshes.first().getNumVertices();
         }
 
         batch.begin();
@@ -338,7 +431,7 @@ public class GameScreen extends ScreenAdapter {
 
 
 
-    private void makeInstanced( ModelInstance modelInstance, Array<Vector3> positions ) {
+    private void makeInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
@@ -349,18 +442,16 @@ public class GameScreen extends ScreenAdapter {
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3)   );
 
+
         // Create offset FloatBuffer that will contain instance data to pass to shader
         FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
 
         // fill instance data buffer
-        MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
         Matrix4 instanceTransform = new Matrix4();
-        for(Vector3 pos: positions) {
-            float angle = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
+        for(Vector4 pos: positions) {
 
-
-            instanceTransform.setToRotationRad(Vector3.Y, angle);
-            instanceTransform.setTranslation(pos);
+            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
+            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
                           // transpose matrix for GLSL
             offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
@@ -369,23 +460,58 @@ public class GameScreen extends ScreenAdapter {
         mesh.setInstanceData(offsets);
     }
 
-    private void makeInstancedDecals( ModelInstance modelInstance, Array<Vector3> positions ) {
+    private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
+
+        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+
+
+        // Create offset FloatBuffer that will contain instance data to pass to shader
+        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
+
+        // fill instance data buffer
+        Matrix4 instanceTransform = new Matrix4();
+        for(Vector4 pos: positions) {
+
+            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
+            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
+            // transpose matrix for GLSL
+            offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
+        }
+
+        ((Buffer)offsets).position(0);      // rewind float buffer to start
+        mesh.updateInstanceData(0, offsets);
+    }
+
+
+    private void makeInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
         // add matrix per instance
-        mesh.enableInstancedRendering(true, instanceCount,
+        mesh.enableInstancedRendering(false, instanceCount,
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
+
+//        // Create offset FloatBuffer that will contain instance data to pass to shader
+//        FloatBuffer offsets = BufferUtils.newFloatBuffer(instanceCount * 4);
+//        for(Vector4 pos: positions) {
+//            offsets.put(new float[] { pos.x, pos.y, pos.z, pos.w });
+//        }
+//
+//        ((Buffer)offsets).position(0);      // rewind float buffer to start
+//        mesh.setInstanceData(offsets);
+
+        mesh.setInstanceData(new float[4*instanceCount]);
+    }
+
+    private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
+
+        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
         FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);
-
-        // fill instance data buffer
-        MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
-
-        for(Vector3 pos: positions) {
-            float angle = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
-            offsets.put(new float[] { pos.x, pos.y, pos.z, angle });
+        for(Vector4 pos: positions) {
+            offsets.put(new float[] { pos.x, pos.y, pos.z, pos.w });
         }
 
         ((Buffer)offsets).position(0);      // rewind float buffer to start
