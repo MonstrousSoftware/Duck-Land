@@ -16,7 +16,6 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.monstrous.impostors.shaders.InstancedDecalShader;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
@@ -42,7 +41,7 @@ public class GameScreen extends ScreenAdapter {
     public int numVertices = 0;
     public int instanceCount = 1;
 
-    public static final int AREA_LENGTH = 500;
+    public static final int AREA_LENGTH = 2500;
     private static final int SEPARATION_DISTANCE = 20;
     private static final int SHADOW_MAP_SIZE = 4096;
 
@@ -72,7 +71,6 @@ public class GameScreen extends ScreenAdapter {
 
     private ModelBatch modelBatch;
     Vector2 regionSize = new Vector2();
-    InstancedDecalShader decalShader = new InstancedDecalShader();
 
 
     @Override
@@ -157,6 +155,7 @@ public class GameScreen extends ScreenAdapter {
         Gdx.app.log("region size", ""+regionSize.x+" , "+regionSize.y);
 
 
+
         int numAngles =  ImpostorBuilder.NUM_ANGLES;
         int width = textureSize / numAngles;
         int height = (int)regionSize.y;
@@ -215,6 +214,7 @@ public class GameScreen extends ScreenAdapter {
                 makeInstanced(lodScenes[lod].modelInstance, positions);
 
             makeInstancedDecals(treeDecalInstances[0], positions);    // instances for decal
+            treeDecalInstances[0].userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
         }
         else
             instanceCount = 1;

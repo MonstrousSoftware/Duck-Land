@@ -6,4 +6,7 @@ public class Settings {
     public static int lodLevel = 3;
 
     public static boolean multiple = true;
+
+
+    public static boolean decalsDebug = false;
 }

@@ -1,29 +1,20 @@
 package com.monstrous.impostors;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.*;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
-import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
-import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.ScreenUtils;
-import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
 import net.mgsx.gltf.scene3d.lights.DirectionalLightEx;
 import net.mgsx.gltf.scene3d.lights.DirectionalShadowLight;
 import net.mgsx.gltf.scene3d.scene.Scene;
-import net.mgsx.gltf.scene3d.scene.SceneAsset;
 import net.mgsx.gltf.scene3d.scene.SceneManager;
-import net.mgsx.gltf.scene3d.scene.SceneSkybox;
 import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
@@ -32,7 +23,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 
 public class ImpostorBuilder {
-    public static final int NUM_ANGLES = 10;
+    public static final int NUM_ANGLES = 16;         // should be power of two to divide texture width evenly
     private static final int SHADOW_MAP_SIZE = 2048;
     private static final String debugFilePath = "tmp/lodtest";
 
@@ -91,6 +82,9 @@ public class ImpostorBuilder {
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
     }
 
+    // note: we determine the ideal camera distance to fill the desired width in pixels
+    // we do this for the front view only and assume other views are not wider than this!
+    //
     private float setOptimalCameraDistance(Camera cam, float modelWidth, float pixelWidth){
 
         float centre =  Gdx.graphics.getWidth()/2;
@@ -109,7 +103,7 @@ public class ImpostorBuilder {
 //        Gdx.app.log("projected", "" + modelWidth + " to " + (projected.x -centre) + " target: " + pixelWidth + "ratio: " + ratio + " distance: " + cameraDistance);
         cameraDistance *= ratio;
 
-        cameraDistance *= 1.1f;   // and add a bit of margin to avoid clipping off extremities
+        //cameraDistance *= 1.1f;   // and add a bit of margin to avoid clipping off extremities
         cam.position.set(0, 0, cameraDistance);
         cam.near = 0.1f*cameraDistance;
         cam.far = cameraDistance*10f;
@@ -134,7 +128,9 @@ public class ImpostorBuilder {
         BoundingBox bbox = new BoundingBox();
         model.modelInstance.calculateBoundingBox(bbox);
 
-        cameraDistance = setOptimalCameraDistance(camera, bbox.getWidth(), textureSize/NUM_ANGLES);
+        int texWidth = textureSize/NUM_ANGLES;
+
+        cameraDistance = setOptimalCameraDistance(camera, bbox.getWidth(), texWidth);
 
         Vector3 v1 = new Vector3(bbox.min.x, bbox.min.y, bbox.min.z);
         Vector3 v2 = new Vector3(bbox.max.x, bbox.max.y, bbox.max.z);
@@ -152,9 +148,10 @@ public class ImpostorBuilder {
 //        clipHeight *= 1.2;
 
 
-        int texWidth = textureSize/NUM_ANGLES;
         int texHeight = clipHeight; //texWidth * clipHeight/clipWidth;  // keep aspect ratio
+        //int texHeight = (int)(textureSize /4f);
         regionSize.set(texWidth, texHeight);        // export region size to caller
+        Gdx.app.log("decal size", "width: " +texWidth + " height: " + texHeight);
 
         int elevations = textureSize / texHeight;
         float elevationStep = 90f/elevations;   // degrees per elevation step
@@ -187,8 +184,10 @@ public class ImpostorBuilder {
                 sceneManager.update(0.1f);  // important for rendering
 
                 // clear with alpha zero to give transparent background
-                ScreenUtils.clear(Color.CLEAR, true);
-
+                if(Settings.decalsDebug)
+                    ScreenUtils.clear(new Color(MathUtils.random(0,1.f),MathUtils.random(0,1.f),MathUtils.random(0,1.f), 1.0f), true);  // debug, give background random colour to show decals in action
+                else
+                    ScreenUtils.clear(Color.CLEAR, true);
                 sceneManager.render();
 
                 // we can't create pixmap from an fbo, only from the screen buffer

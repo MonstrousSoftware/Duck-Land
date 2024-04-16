@@ -1,7 +1,9 @@
 
-
 uniform mat4 u_projViewTrans;
 uniform vec3 u_camPos;
+
+// dedicated to the use of the decal atlas
+uniform vec2     u_step;          // u width (fraction) horizontally per decal Y rotation, v height (fraction) horizontally per decal polar rotation
 
 in vec3 a_position;
 in vec2 a_texCoord0;
@@ -21,68 +23,38 @@ mat3 calcLookAtMatrix(vec3 origin, vec3 target) {
 }
 
 #define PI 3.1415926538
-#define STEPS 10.0
-#define ELEV_STEP (PI / 6.0)
 
-vec2 getUVoffset(vec3 origin, vec4 offset)
+// get UV offset in the decal atlas texture for the decal at the closest angle
+vec2 getUVoffset(vec3 camera, vec4 instance)
 {
-    vec3 fwd =      origin-offset.xyz;
+    vec3 fwd =      camera-instance.xyz;        // vector towards camera
 
-    // angle in the horizontal plane
-    float angle;
-    if(abs(fwd.x) < 0.01 )
-        angle = sign(fwd.z)*PI/2.0;
-    else
-        angle = atan(fwd.z, fwd.x);
-    angle -= 0.5*PI;
-    angle += offset.w;           //  in the range [-Pi,Pi].
-    if(angle < 0.0)
-        angle += 2.0*PI;
-    float u =  floor(STEPS * angle / (2.0*PI));
-    u /= STEPS;
+    // angle in the horizontal plane (360 degrees)
+    float angle = atan(fwd.z, fwd.x);
+    angle += instance.w;           //  add model's rotation in the range [-Pi,Pi].
+    angle -= 0.5*PI;                // turn to match definition of zero
+    angle = mod(angle, 2.0*PI);
 
+    float u_offset = floor( angle / (2.0*PI * u_step.x));     // index of texture column to use (0 .. N)
+    u_offset *= u_step.x;
 
     float len = length( fwd.xz );
-    float elevationAngle = atan(fwd.y, len);
+    float elevationAngle = 0.5*PI;
+    if(len >= 0.1)
+        elevationAngle = atan(fwd.y/ len);  // [-PI/2, PI/2]
+    elevationAngle = max(elevationAngle, 0.0);    // [0, PI/2]
 
-    float v = floor(elevationAngle / ELEV_STEP );
-    v = clamp(v, 0.0, 5.0);
-    //v /= 6.0;
-    v = v * 299.0 / 2048.0;
+    float v_offset = floor( elevationAngle / (PI * 0.5 * u_step.y) );// index of texture row to use (0 .. M)
+    v_offset = clamp(v_offset, 0.0, floor(1.0/u_step.y)-1.0);
+    v_offset *= u_step.y;
 
-//    float dist = distance(u_camPos.xz,i_worldTrans.xz);
-//    angleX = atan(u_camPos.y - i_worldTrans.y,dist);
-//    //float angleX = atan(rotationMatrix[1][2],rotationMatrix[2][2])-HALF_PI;
-//    //float angleX = atan(-rotationMatrix[0][2],sqrt( (rotationMatrix[1][2] * rotationMatrix[1][2]) + (rotationMatrix[2][2] * rotationMatrix[2][2]) ))+HALF_PI;
-//    angleY = acos(dot(normalize(vec2(i_worldTrans.x,u_camPos.x)),normalize(vec2(i_worldTrans.z,u_camPos.z))));
-//
-//    float tmpFloat1;
-//    float tmpFloat2;
-//
-//    if (angleX > HALF_PI)
-//    angleX = HALF_PI - (angleX - HALF_PI);
-//    if (angleX < MINIMUM_ANGLE_RAD) {
-//        tmpFloat1 = 0.0;
-//        tmpStepX = 0.0;
-//    }
-//    else
-//    {
-//        tmpStepX = float(round((angleX - MINIMUM_ANGLE_RAD) / u_uvStepSize.x));
-//        if (tmpStepX >= u_uvSteps.x) tmpStepX = u_uvSteps.x-1.0;
-//        tmpFloat1 =  tmpStepX * u_uvSize.x;
-//    }
-//
-//    tmpStepY = float(round((angleY) / u_uvStepSize.y));
-//    if (tmpStepY >= u_uvSteps.y) tmpStepY = u_uvSteps.y-1.0;
-//    tmpFloat2 =  tmpStepY * u_uvSize.y;
-
-    return vec2(u+ a_texCoord0.x,v+ a_texCoord0.y);
+    return vec2(u_offset, 0.000001*v_offset);
 }
 
 
 
 void main () {
-    texCoords = getUVoffset(u_camPos, i_offset);
+    texCoords = a_texCoord0 + getUVoffset(u_camPos, i_offset);
 
     mat3 decalRotMatrix = calcLookAtMatrix( u_camPos, i_offset.xyz);
 

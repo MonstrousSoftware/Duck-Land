@@ -3,6 +3,7 @@ package com.monstrous.impostors.shaders;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.graphics.g3d.Attributes;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.Shader;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
@@ -12,7 +13,7 @@ import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider;
 import com.badlogic.gdx.graphics.g3d.utils.RenderContext;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-
+import com.monstrous.impostors.ImpostorBuilder;
 
 
 public class InstancedDecalShaderProvider extends DefaultShaderProvider {
@@ -21,6 +22,15 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
 
     String vertexShader;
     String fragmentShader;
+
+    static public class UVSize{     // userData structure to hold UV information
+        float u, v;
+
+        public UVSize(float u, float v) {
+            this.u = u;
+            this.v = v;
+        }
+    }
 
     public InstancedDecalShaderProvider(DefaultShader.Config config) {
         super(config);
@@ -45,7 +55,7 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
             //    uniform mat4 u_projViewTrans;
             //
             //    Instance data:
-            //    in mat4 i_worldTrans;
+            //    in vec4 i_offset;
 
             @Override
             public void init() {
@@ -66,8 +76,6 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 this.context = context;
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                //program.setUniformMatrix("u_viewTrans", camera.view);
-                //program.setUniformMatrix("u_projViewTrans", camera.combined);
                 final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
                 program.setUniformi("u_texture", unit);
                 float[] camPos = new float[3];
@@ -81,14 +89,23 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
             }
 
             @Override
+            public void render(Renderable renderable, Attributes combinedAttributes) {
+                if(renderable.userData == null) throw new GdxRuntimeException("Missing UVsize, renderable.userData is null");
+                UVSize uvDimensions = (UVSize)(renderable.userData);
+                program.setUniformf("u_step", uvDimensions.u, uvDimensions.v);
+
+                super.render(renderable, combinedAttributes);
+            }
+
+            @Override
             public int compareTo(Shader other) {
                 return 0;
-            }
+            }           // FIXME
 
             @Override
             public boolean canRender(Renderable instance) {
                 return true;
-            }
+            }       // FIXME
         };
     }
 
