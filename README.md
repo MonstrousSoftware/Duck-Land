@@ -20,6 +20,7 @@ Controls:
 - use mouse to move camera, scroll wheel to zoom in/out
 - TAB to cycle through LOD0, LOD1, LOD2, Impostors and all
 - T to show terrain chunks
+- P to toggle scenery chunks (colour indicated LOD level)
 - Z, X to change LOD distances
 
 
@@ -33,14 +34,14 @@ Notes:
 - decals get clipped when leaning forward.  This is because the clipping rect is calculated from low elevation. At high elevation view the front spills over
  below the clipped region.  If we add a safety margin, the decals appear to be floating in the air when upright.
 
-- The decals appear a bit darker than the real models.  
 - Known issue: when viewing from above the impostors flatten out sideways leaving a hole in the middle.
 
 To do/ideas:
-- There is not frustum cilling.  Frustum culling would boost the performance even with instanced objects. However, tests so far has the clipping a bit inaccurate sometimes leaving gaps left and right.
+- DONE:  Frustum culling 
 
-- The instances could be generated in chunks for an infinite amount (like the terrain chunks)
-- LOD level could be determined per chunk for faster allocation
+- DONE: The instances could be generated in chunks 
+- Using the chunks we could polulate an infinite amount (like the terrain chunks)
+- DONE: LOD level could be determined per chunk for faster allocation
 - Could use an indirect buffer to index the instance transforms, to exchange less data per frame (1 integer instead of 16 floats).  Because the locations are static, they are just allocated
 to different LOD models over time.
 

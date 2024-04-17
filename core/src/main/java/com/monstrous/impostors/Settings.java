@@ -8,7 +8,7 @@ public class Settings {
     public static int lodLevel = 3;
 
     public static boolean dynamicLODAdjustment = true;
-    public static float lod1Distance = 80f;
+    public static float lod1Distance = 128; //80f;
     public static float lod2Distance = 2*lod1Distance;
     public static float impostorDistance = 2*lod2Distance;
 
@@ -23,4 +23,7 @@ public class Settings {
     static public float     terrainChunkSize = 4096;
     static public int       terrainChunkCacheSize = 100;
     static public boolean   debugTerrainChunkAllocation = false;
+
+
+    static public boolean   debugSceneryChunkAllocation = true;
 }

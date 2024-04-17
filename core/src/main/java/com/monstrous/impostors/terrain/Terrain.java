@@ -21,7 +21,7 @@ public class Terrain implements Disposable {
     private static final int RANGE = 2;               // viewing range in chunks
 
     final HashMap<Integer, TerrainChunk> chunks;      // map of terrain chunk per grid point
-    public final Array<Scene> scenes;                 // scenes to be rendered
+    private final Array<Scene> scenes;                 // scenes to be rendered
     int timeCounter;                            // used as timestamp for chunk creation time
     private Noise noise;
 
@@ -48,6 +48,10 @@ public class Terrain implements Disposable {
                 }
             }
         }
+    }
+
+    public Array<Scene> getScenes(){
+        return scenes;
     }
 
 

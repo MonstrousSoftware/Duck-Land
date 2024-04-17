@@ -83,9 +83,9 @@ public class GUI {
     private void updateLabels(){
         int total = 0;
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            vertsLabels[lod].setText(screen.statistics[lod].vertexCount);
-            instancesLabels[lod].setText(screen.statistics[lod].instanceCount);
-            total += screen.statistics[lod].instanceCount;
+            vertsLabels[lod].setText(screen.scenery.statistics[lod].vertexCount);
+            instancesLabels[lod].setText(screen.scenery.statistics[lod].instanceCount);
+            total += screen.scenery.statistics[lod].instanceCount;
         }
         totalInstancesLabel.setText(total);
         fpsLabel.setText( Gdx.graphics.getFramesPerSecond());

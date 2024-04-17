@@ -62,7 +62,7 @@ public class ImpostorBuilder {
 
         light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(25,25,5,40);
 
-        light.direction.set(1, -3, 1).nor();
+        light.direction.set(1, -3, -1).nor();   // light from the front
         light.color.set(Color.WHITE);
         sceneManager.environment.add(light);
 
