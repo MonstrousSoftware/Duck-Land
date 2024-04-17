@@ -20,11 +20,12 @@ import com.monstrous.impostors.gui.GUI;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
+import com.monstrous.impostors.terrain.Terrain;
+import com.monstrous.impostors.terrain.TerrainDebug;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
-import net.mgsx.gltf.scene3d.lights.DirectionalLightEx;
 import net.mgsx.gltf.scene3d.lights.DirectionalShadowLight;
 import net.mgsx.gltf.scene3d.scene.*;
 import net.mgsx.gltf.scene3d.utils.IBLBuilder;
@@ -39,7 +40,7 @@ public class GameScreen extends ScreenAdapter {
     public Statistic[] statistics;
     public int instanceCount = 1;
 
-    public static final int AREA_LENGTH = 9500;
+    public static final int AREA_LENGTH = 10000;
     private static final int SEPARATION_DISTANCE = 20;
     private static final int SHADOW_MAP_SIZE = 4096;
 
@@ -60,7 +61,8 @@ public class GameScreen extends ScreenAdapter {
     private ImpostorBuilder builder;
     private TextureRegion[] textureRegions;
     private Texture impostorTexture;
-    private ModelInstance[] treeDecalInstances;  // decals from different angles
+    private ModelInstance decalInstance;
+    //private ModelInstance[] treeDecalInstances;  // decals from different angles
     private TextureRegion atlasRegion;
     private SpriteBatch batch;
     private float elevationStep;
@@ -68,10 +70,12 @@ public class GameScreen extends ScreenAdapter {
     private Array<Vector2> points;
     private Array<Vector4> allPositions;
     private Array<Vector4>[] positions;
-
     private ModelBatch modelBatch;
     Vector2 regionSize = new Vector2();
     private CascadeShadowMap csm;
+    private Terrain terrain;
+    private TerrainDebug terrainDebug;
+    private Vector3 origin;
 
 
     @Override
@@ -100,23 +104,33 @@ public class GameScreen extends ScreenAdapter {
         }
 
 
-        sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
-        groundScene = new Scene(sceneAsset.scene);
-        if(Settings.multiple)
-            groundScene.modelInstance.transform.setToScaling(AREA_LENGTH/20, 20, AREA_LENGTH/20);
-        sceneManager.addScene(groundScene);
+
+
 
 
         // setup camera
         camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 40f;
         camera.near = 0.01f;
-        camera.far = AREA_LENGTH*10;
-        camera.position.setFromSpherical(MathUtils.PI/4, .4f).scl(cameraDistance);
+        camera.far = 30000f;
+        camera.position.set(0, 20, 50);
 		camera.up.set(Vector3.Y);
 		camera.lookAt(Vector3.Zero);
 		camera.update();
         sceneManager.setCamera(camera);
+
+        terrain = new Terrain(camera.position);
+        terrainDebug = new TerrainDebug(terrain);
+
+        camera.position.set(0, terrain.getHeight(0, 50) + 10, 50);
+        origin = new Vector3(0, terrain.getHeight(0, 0), 0);
+
+//        sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
+//        groundScene = new Scene(sceneAsset.scene);
+//        if(Settings.multiple)
+//            groundScene.modelInstance.transform.setToScaling(AREA_LENGTH/20, 20, AREA_LENGTH/20);
+//        sceneManager.addScene(groundScene);
+
 
         // input multiplexer to input to GUI and to cam controller
         InputMultiplexer im = new InputMultiplexer();
@@ -156,7 +170,7 @@ public class GameScreen extends ScreenAdapter {
         // This texture is provided by the library, no need to have it in your assets.
         brdfLUT = new Texture(Gdx.files.classpath("net/mgsx/gltf/shaders/brdfLUT.png"));
 
-        sceneManager.setAmbientLight(0.1f);
+        sceneManager.setAmbientLight(0.3f);
         sceneManager.environment.set(new PBRTextureAttribute(PBRTextureAttribute.BRDFLUTTexture, brdfLUT));
         sceneManager.environment.set(PBRCubemapAttribute.createSpecularEnv(specularCubemap));
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
@@ -181,7 +195,8 @@ public class GameScreen extends ScreenAdapter {
 
 
         textureRegions = new TextureRegion[numAngles * elevations];
-        treeDecalInstances = new ModelInstance[numAngles * elevations];
+        //treeDecalInstances = new ModelInstance[numAngles * elevations];
+
 
 
 
@@ -197,17 +212,15 @@ public class GameScreen extends ScreenAdapter {
                 region.flip(false, true);        // note the texture is upside down, so flip the texture region
                 textureRegions[elevation * numAngles + angle] = region;
                 x += width;
-
-                // create decal instances for each texture region for testing
-                // we should not need to swap instance depending on camera position (just to use other uv offset)
-
-                Model model = Impostor.createImposterModel(region, lodScenes[0].modelInstance);
-                ModelInstance instance = new ModelInstance(model, 0, 0, 0);
-                treeDecalInstances[elevation * numAngles + angle] = instance;
             }
             y += height;
         }
-        treeDecalInstances[0].userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
+
+        // create decal instance
+        Model model = Impostor.createImposterModel(textureRegions[0], lodScenes[0].modelInstance);
+        decalInstance = new ModelInstance(model, 0, 0, 0);
+        // use user data to pass info  on the texture atlas to the shader
+        decalInstance.userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
 
 
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );
@@ -224,25 +237,27 @@ public class GameScreen extends ScreenAdapter {
         allPositions = new Array<>();
         MathUtils.random.setSeed(1234);         // fix the random rotation to always be identical
         for(Vector2 point : points ) {
+            float x = point.x - AREA_LENGTH/2f;
+            float z = point.y - AREA_LENGTH/2f;
+            float h = terrain.getHeight(x, z);
             float angleY = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
-            Vector4 position = new Vector4( point.x - AREA_LENGTH/2f, 0, point.y - AREA_LENGTH/2f, angleY);
+            Vector4 position = new Vector4( x, h, z, angleY);
             allPositions.add( position );
         }
 
-        positions = new Array[4];
+        positions = new Array[Settings.LOD_LEVELS+1];
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
             positions[lod] = new Array<>();
 
-        allocateLodInstances();
+        allocateLodInstances( origin );
 
         if(Settings.multiple) {
-            //instanceCount = points.size;
 
             // instances for every LOD model
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
                 makeInstanced(lodScenes[lod].modelInstance, positions[lod]);
 
-            makeInstancedDecals(treeDecalInstances[0], positions[3]);    // instances for decal
+            makeInstancedDecals(decalInstance, positions[Settings.LOD_LEVELS]);    // instances for decal
             updateInstanceData();
         }
         //else
@@ -255,7 +270,7 @@ public class GameScreen extends ScreenAdapter {
 
     private Vector3 pos = new Vector3();
 
-    private void allocateLodInstances() {
+    private void allocateLodInstances( Vector3 reference ) {
         float scale = AREA_LENGTH;
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
             positions[lod].clear();
@@ -264,12 +279,12 @@ public class GameScreen extends ScreenAdapter {
             pos.set(position.x, position.y, position.z);
 //            if(!camera.frustum.sphereInFrustum(pos, 2f))
 //                continue;
-            float distance = pos.dst(camera.position);
-            if (distance < Settings.lod1Distance * scale  )
+            float distance = pos.dst(reference);
+            if (distance < Settings.lod1Distance   )
                 positions[0].add(position);
-            else if ( distance < Settings.lod2Distance * scale )
+            else if ( distance < Settings.lod2Distance  )
                 positions[1].add(position);
-            else if (distance < Settings.impostorDistance * scale )
+            else if (distance < Settings.impostorDistance  )
                 positions[2].add(position);
             else
                 positions[3].add(position);
@@ -281,9 +296,8 @@ public class GameScreen extends ScreenAdapter {
             if(lod < Settings.LOD_LEVELS)
                 statistics[lod].vertexCount = lodScenes[lod].modelInstance.model.meshes.first().getNumVertices();
             else
-                statistics[lod].vertexCount = treeDecalInstances[0].model.meshes.first().getNumVertices();
+                statistics[lod].vertexCount = decalInstance.model.meshes.first().getNumVertices();
         }
-        //instanceCount = points.size;
     }
 
     private void updateInstanceData() {
@@ -292,7 +306,7 @@ public class GameScreen extends ScreenAdapter {
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
             updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
 
-        updateInstancedDecals(treeDecalInstances[0], positions[3]);    // instances for decal
+        updateInstancedDecals(decalInstance, positions[Settings.LOD_LEVELS]);    // instances for decal
     }
 
 
@@ -318,14 +332,17 @@ public class GameScreen extends ScreenAdapter {
         if(Gdx.input.isKeyJustPressed(Input.Keys.M))
             Settings.multiple = !Settings.multiple;
 
+        if(Gdx.input.isKeyJustPressed(Input.Keys.T))
+            Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
 
         lodUpdate -= deltaTime;     // todo or if camera moved
         if(lodUpdate < 0) {
-            lodUpdate = 0.5f;
-            allocateLodInstances();
+            lodUpdate = 0.1f;
+            allocateLodInstances( camera.position );
             updateInstanceData();
         }
 
+        terrain.update( camera );
 
 
         // animate camera
@@ -347,7 +364,11 @@ public class GameScreen extends ScreenAdapter {
             light.setCenter(camera.position); // keep shadow light on player so that we have shadows
 
         sceneManager.getRenderableProviders().clear();
-        sceneManager.addScene(groundScene);
+        //sceneManager.addScene(groundScene);
+
+        // terrain chunks are taken directly from the Terrain class, these are not game objects
+        for(Scene scene : terrain.scenes)
+            sceneManager.addScene(scene, false);
 
         if(Settings.lodLevel < 0) { // mixed levels, add all LOD instances
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++){
@@ -369,33 +390,37 @@ public class GameScreen extends ScreenAdapter {
 
 
         if(Settings.lodLevel == Settings.LOD_LEVELS || Settings.lodLevel < 0 ) {      // impostors
-            if(Settings.multiple)
-                index = 0;          // test
-            else
-                // which decal to use? Depends on viewing angle
-                index = getViewingIndex(forward);
+//            if(Settings.multiple)
+//                index = 0;          // test
+//            else
+//                // which decal to use? Depends on viewing angle
+//                index = getViewingIndex(forward);
+//
+//
+////            Gdx.app.log("view angle:", ""+angle+" index:"+index);
+//
+//            ModelInstance instance = decalInstance;
+//
+//            if(!Settings.multiple) {
+//                // get billboard to face the camera
+//                instance.transform.getTranslation(pos);         // get instance position
+//                forward.set(camera.position).sub(pos).nor();        // vector towards camera
+//                right.set(camera.up).crs(forward).nor();
+//                up.set(forward).crs(right).nor();
+//                q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
+//                instance.transform.set(q).setTranslation(pos);
+//            }
 
-
-//            Gdx.app.log("view angle:", ""+angle+" index:"+index);
-
-            ModelInstance instance = treeDecalInstances[index];
-
-            if(!Settings.multiple) {
-                // get billboard to face the camera
-                instance.transform.getTranslation(pos);         // get instance position
-                forward.set(camera.position).sub(pos).nor();        // vector towards camera
-                right.set(camera.up).crs(forward).nor();
-                up.set(forward).crs(right).nor();
-                q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
-                instance.transform.set(q).setTranslation(pos);
+            if(positions[Settings.LOD_LEVELS].size > 0) {
+                modelBatch.begin(camera);
+                modelBatch.render(decalInstance);
+                modelBatch.end();
             }
-
-            modelBatch.begin(camera);
-            modelBatch.render(instance);
-            modelBatch.end();
 
             //numVertices = instance.model.meshes.first().getNumVertices();
         }
+
+        terrainDebug.debugRender(Vector3.Zero, camera.position);
 
         batch.begin();
         batch.draw(textureRegions[index], 0, 0, regionSize.x, regionSize.y);
@@ -541,6 +566,8 @@ public class GameScreen extends ScreenAdapter {
         skybox.dispose();
         gui.dispose();
         builder.dispose();
+        terrain.dispose();
+        terrainDebug.dispose();
     }
 
 }
