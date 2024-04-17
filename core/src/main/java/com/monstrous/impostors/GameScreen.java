@@ -277,8 +277,12 @@ public class GameScreen extends ScreenAdapter {
 
         for (Vector4 position : allPositions) {
             pos.set(position.x, position.y, position.z);
-//            if(!camera.frustum.sphereInFrustum(pos, 2f))
+
+            // frustum culling
+//            if(!camera.frustum.sphereInFrustum(pos, 20f))
 //                continue;
+
+            // allocate this instance to one of the LOD levels depending on the distance
             float distance = pos.dst(reference);
             if (distance < Settings.lod1Distance   )
                 positions[0].add(position);
@@ -291,13 +295,16 @@ public class GameScreen extends ScreenAdapter {
         }
         //Gdx.app.log("Distribution:", "LOD0: " + positions[0].size + " LOD1: " + positions[1].size + " LOD2: " + positions[2].size + " IMP: " + positions[3].size);
 
+        int total = 0;
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++){
             statistics[lod].instanceCount = positions[lod].size;
+            total += positions[lod].size;
             if(lod < Settings.LOD_LEVELS)
                 statistics[lod].vertexCount = lodScenes[lod].modelInstance.model.meshes.first().getNumVertices();
             else
                 statistics[lod].vertexCount = decalInstance.model.meshes.first().getNumVertices();
         }
+        if(total != allPositions.size) throw new GdxRuntimeException("lost LOD models");
     }
 
     private void updateInstanceData() {
@@ -318,7 +325,7 @@ public class GameScreen extends ScreenAdapter {
 
     private float lodUpdate = 0.5f;
 
-   // @Override
+    @Override
     public void render(float deltaTime) {
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.TAB))
@@ -335,15 +342,6 @@ public class GameScreen extends ScreenAdapter {
         if(Gdx.input.isKeyJustPressed(Input.Keys.T))
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
 
-        lodUpdate -= deltaTime;     // todo or if camera moved
-        if(lodUpdate < 0) {
-            lodUpdate = 0.1f;
-            allocateLodInstances( camera.position );
-            updateInstanceData();
-        }
-
-        terrain.update( camera );
-
 
         // animate camera
 //        viewAngle += deltaTime;
@@ -352,10 +350,22 @@ public class GameScreen extends ScreenAdapter {
 //        //camera.position.y = cameraDistance * (float) Math.sin((time*10f) * MathUtils.degreesToRadians);
 //        camera.position.y = .3f*cameraDistance;
 
-		camera.up.set(Vector3.Y);
-		camera.lookAt(Vector3.Zero);
-		camera.update();
+        camera.up.set(Vector3.Y);
+        camera.lookAt(Vector3.Zero);
         camController.update();
+        camera.update(true);
+
+        lodUpdate -= deltaTime;     // todo or if camera moved
+        if(lodUpdate < 0) {
+            lodUpdate = 0.1f;
+            allocateLodInstances( origin ); //camera.position );
+            updateInstanceData();
+        }
+
+        terrain.update( camera );
+
+
+
 
         if(Settings.cascadedShadows) {
             csm.setCascades(sceneManager.camera, light, 0, 10f);
@@ -427,6 +437,43 @@ public class GameScreen extends ScreenAdapter {
         batch.end();
 
         gui.render(deltaTime);
+
+        adjustDetailToFrameRate(deltaTime, 60);
+    }
+
+
+    private int numSamples = 0;
+    private float totalTime = 0;
+    private float sampleTime = 1;
+
+    // dynamic adjustment of quality settings to achieve an acceptable minimum frame rate.
+    // This checks often on start up, once the minimum frame rate is achieved it will check less often just in case the frame rate gets worse.
+    // Note: in case of a very high frame rate, we don't reduce the LOD levels to make it slower/better quality.
+    //
+    private void adjustDetailToFrameRate(float deltaTime, float targetFrameRate ){
+
+        totalTime += deltaTime;
+        numSamples++;
+        if(totalTime > sampleTime){        // every few seconds check frame rate
+            float frameRate =  numSamples / totalTime;
+            Gdx.app.log("fps (avg)", ""+frameRate);
+
+            if(frameRate < targetFrameRate ){
+                // to improve performance, make LOD distances smaller
+                Settings.lod1Distance *= 0.7f;
+                Settings.lod2Distance = 2*Settings.lod1Distance;
+                Settings.impostorDistance = 2*Settings.lod2Distance;
+
+                Gdx.app.log("Frame rate too low, increasing LOD1 distance to:", ""+Settings.lod1Distance);
+            }
+            else {
+                sampleTime = 10f;   // recheck every so often, but with lower frequency
+                Gdx.app.log("Target frame rate achieved", "(min "+targetFrameRate+")");
+            }
+            numSamples = 0;
+            totalTime = 0;
+        }
+
     }
 
 
@@ -461,34 +508,18 @@ public class GameScreen extends ScreenAdapter {
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
         // add matrix per instance
-        mesh.enableInstancedRendering(true, instanceCount,
+        mesh.enableInstancedRendering(false, instanceCount,      // pass maximum instance count
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3)   );
 
-
-        // Create offset FloatBuffer that will contain instance data to pass to shader
-        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
-
-        // fill instance data buffer
-        Matrix4 instanceTransform = new Matrix4();
-        for(Vector4 pos: positions) {
-
-            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
-            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
-                          // transpose matrix for GLSL
-            offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
-        }
-
-        ((Buffer)offsets).position(0);      // rewind float buffer to start
-        mesh.setInstanceData(offsets);
+        updateInstanced(modelInstance, positions);
     }
 
     private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
-
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
         FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
@@ -503,8 +534,8 @@ public class GameScreen extends ScreenAdapter {
             offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
 
-        ((Buffer)offsets).position(0);      // rewind float buffer to start
-        mesh.updateInstanceData(0, offsets);
+        offsets.position(0);      // rewind float buffer to start
+        mesh.setInstanceData(offsets);
     }
 
 
@@ -516,22 +547,12 @@ public class GameScreen extends ScreenAdapter {
         mesh.enableInstancedRendering(false, instanceCount,
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
 
-//        // Create offset FloatBuffer that will contain instance data to pass to shader
-//        FloatBuffer offsets = BufferUtils.newFloatBuffer(instanceCount * 4);
-//        for(Vector4 pos: positions) {
-//            offsets.put(new float[] { pos.x, pos.y, pos.z, pos.w });
-//        }
-//
-//        ((Buffer)offsets).position(0);      // rewind float buffer to start
-//        mesh.setInstanceData(offsets);
-
-        mesh.setInstanceData(new float[4*instanceCount]);
+        updateInstancedDecals(modelInstance, positions);
     }
 
     private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
-
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
         FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);

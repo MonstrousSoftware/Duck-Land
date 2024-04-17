@@ -14,6 +14,8 @@ import java.util.HashMap;
 // Infinite Terrain using terrain chunks that are generated on demand.
 // It is subdivided into chunks of size Settings.chunkSize
 
+// call terrain.update( camera ) before rendering
+
 
 public class Terrain implements Disposable {
     private static final int RANGE = 2;               // viewing range in chunks
