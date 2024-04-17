@@ -1,6 +1,7 @@
 package com.monstrous.impostors.terrain;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.VertexAttributes;
@@ -17,6 +18,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Disposable;
 import com.monstrous.impostors.Settings;
+import net.mgsx.gltf.scene3d.attributes.PBRColorAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
 import net.mgsx.gltf.scene3d.scene.Scene;
 
@@ -63,8 +65,8 @@ public class TerrainChunk implements Disposable {
         }
 
         Material material =  new Material();
-        material.set(PBRTextureAttribute.createBaseColorTexture(terrainTexture));
-
+        //material.set(PBRTextureAttribute.createBaseColorTexture(terrainTexture));
+        material.set(PBRColorAttribute.createBaseColorFactor(new Color(0x529E5BFF)));
         model = makeGridModel(heightMap, SCALE, MAP_SIZE, GL20.GL_TRIANGLES, material);
         modelInstance =  new ModelInstance(model, position);
 

@@ -23,10 +23,12 @@ public class Terrain implements Disposable {
     final HashMap<Integer, TerrainChunk> chunks;      // map of terrain chunk per grid point
     public final Array<Scene> scenes;                 // scenes to be rendered
     int timeCounter;                            // used as timestamp for chunk creation time
+    private Noise noise;
 
     public Terrain( Vector3 startPosition) {
         chunks = new HashMap<>();
         scenes = new Array<>();
+        noise = new Noise();
 
         int px = (int)Math.floor(startPosition.x/Settings.terrainChunkSize);
         int pz = (int)Math.floor(startPosition.z/Settings.terrainChunkSize);
@@ -112,6 +114,8 @@ public class Terrain implements Disposable {
 
     // get terrain height at (x,z)
     public float getHeight(float x, float z) {
+//        float scale = Settings.terrainChunkSize;
+//        return noise.PerlinNoise(x/scale, z/scale) * TerrainChunk.AMPLITUDE;
 
         // work out what chunk we're in
         // and the relative position for that chunk

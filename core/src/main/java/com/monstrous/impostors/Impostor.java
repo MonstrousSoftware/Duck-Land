@@ -15,16 +15,14 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 
 
-
 // Similar to standard LibGDX Decal
-// does it compete for performance?
+
 
 public class Impostor {
 
 
-
     // create an Impostor model, i.e. a quad of the right size with the texture region on it.
-    //
+    // The precise texture region to use is determined in the shader from the viewing angle.
     public static Model createImposterModel(TextureRegion textureRegion, ModelInstance instance){
 
         // we need to know the world size of the actual model

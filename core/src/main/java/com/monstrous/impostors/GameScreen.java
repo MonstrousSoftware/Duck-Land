@@ -15,7 +15,6 @@ import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.ScreenUtils;
 import com.monstrous.impostors.gui.GUI;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
@@ -29,8 +28,6 @@ import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
 import net.mgsx.gltf.scene3d.lights.DirectionalShadowLight;
 import net.mgsx.gltf.scene3d.scene.*;
 import net.mgsx.gltf.scene3d.utils.IBLBuilder;
-
-import java.nio.Buffer;
 import java.nio.FloatBuffer;
 
 
@@ -40,7 +37,7 @@ public class GameScreen extends ScreenAdapter {
     public Statistic[] statistics;
     public int instanceCount = 1;
 
-    public static final int AREA_LENGTH = 10000;
+    public static final int AREA_LENGTH = 9000;            // use 25000 x 20 for 1M items
     private static final int SEPARATION_DISTANCE = 20;
     private static final int SHADOW_MAP_SIZE = 4096;
 
@@ -59,11 +56,10 @@ public class GameScreen extends ScreenAdapter {
     private Scene[] lodScenes;
     private GUI gui;
     private ImpostorBuilder builder;
-    private TextureRegion[] textureRegions;
     private Texture impostorTexture;
     private ModelInstance decalInstance;
-    //private ModelInstance[] treeDecalInstances;  // decals from different angles
     private TextureRegion atlasRegion;
+    private TextureRegion textureRegion0;
     private SpriteBatch batch;
     private float elevationStep;
     private int elevations;
@@ -76,6 +72,7 @@ public class GameScreen extends ScreenAdapter {
     private Terrain terrain;
     private TerrainDebug terrainDebug;
     private Vector3 origin;
+    private FloatBuffer instanceData;   // temp buffer for instance data
 
 
     @Override
@@ -103,16 +100,11 @@ public class GameScreen extends ScreenAdapter {
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
 
-
-
-
-
-
         // setup camera
         camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 40f;
-        camera.near = 0.01f;
-        camera.far = 30000f;
+        camera.near = 1f;
+        camera.far = 15000f;
         camera.position.set(0, 20, 50);
 		camera.up.set(Vector3.Y);
 		camera.lookAt(Vector3.Zero);
@@ -125,18 +117,12 @@ public class GameScreen extends ScreenAdapter {
         camera.position.set(0, terrain.getHeight(0, 50) + 10, 50);
         origin = new Vector3(0, terrain.getHeight(0, 0), 0);
 
-//        sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
-//        groundScene = new Scene(sceneAsset.scene);
-//        if(Settings.multiple)
-//            groundScene.modelInstance.transform.setToScaling(AREA_LENGTH/20, 20, AREA_LENGTH/20);
-//        sceneManager.addScene(groundScene);
-
 
         // input multiplexer to input to GUI and to cam controller
         InputMultiplexer im = new InputMultiplexer();
         Gdx.input.setInputProcessor(im);
         camController = new CameraInputController(camera);
-        camController.scrollFactor = -1f;   // fast zoom
+        camController.scrollFactor = -2f;   // fast zoom
         im.addProcessor(gui.stage);
         im.addProcessor(camController);
 
@@ -170,7 +156,7 @@ public class GameScreen extends ScreenAdapter {
         // This texture is provided by the library, no need to have it in your assets.
         brdfLUT = new Texture(Gdx.files.classpath("net/mgsx/gltf/shaders/brdfLUT.png"));
 
-        sceneManager.setAmbientLight(0.3f);
+        sceneManager.setAmbientLight(Settings.ambientLightLevel);
         sceneManager.environment.set(new PBRTextureAttribute(PBRTextureAttribute.BRDFLUTTexture, brdfLUT));
         sceneManager.environment.set(PBRCubemapAttribute.createSpecularEnv(specularCubemap));
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
@@ -193,31 +179,14 @@ public class GameScreen extends ScreenAdapter {
         elevations = textureSize / height;
         elevationStep = 60f/elevations;   // degrees per elevation step
 
-
-        textureRegions = new TextureRegion[numAngles * elevations];
-        //treeDecalInstances = new ModelInstance[numAngles * elevations];
-
-
-
-
         atlasRegion = new TextureRegion(impostorTexture, 0f, 0f, 1.0f, 1.0f);
+        textureRegion0 = new TextureRegion(impostorTexture, 0, 0, width, height);
+        textureRegion0.flip(false, true);
 
         int y = 0;
 
-        for(int elevation = 0; elevation < elevations; elevation++) {
-            int x = 0;
-            for (int angle = 0; angle < numAngles; angle++) {
-
-                TextureRegion region = new TextureRegion(impostorTexture, x, y, width, height);
-                region.flip(false, true);        // note the texture is upside down, so flip the texture region
-                textureRegions[elevation * numAngles + angle] = region;
-                x += width;
-            }
-            y += height;
-        }
-
         // create decal instance
-        Model model = Impostor.createImposterModel(textureRegions[0], lodScenes[0].modelInstance);
+        Model model = Impostor.createImposterModel(textureRegion0, lodScenes[0].modelInstance);
         decalInstance = new ModelInstance(model, 0, 0, 0);
         // use user data to pass info  on the texture atlas to the shader
         decalInstance.userData = new InstancedDecalShaderProvider.UVSize(regionSize.x/textureSize, regionSize.y/textureSize);
@@ -251,27 +220,28 @@ public class GameScreen extends ScreenAdapter {
 
         allocateLodInstances( origin );
 
-        if(Settings.multiple) {
+       // enable instancing for every LOD model
+        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+            makeInstanced(lodScenes[lod].modelInstance, positions[lod]);
 
-            // instances for every LOD model
-            for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
-                makeInstanced(lodScenes[lod].modelInstance, positions[lod]);
+        // enable instancing for impostors
+        makeInstancedDecals(decalInstance, positions[Settings.LOD_LEVELS]);
 
-            makeInstancedDecals(decalInstance, positions[Settings.LOD_LEVELS]);    // instances for decal
-            updateInstanceData();
-        }
-        //else
-            //instanceCount = 1;
-
-        Settings.lodLevel = -1;
+        Settings.lodLevel = -1;     // show all LOD levels and impostors
 
     }
 
 
     private Vector3 pos = new Vector3();
+    private Vector3 prevPosition = new Vector3();
+
+    // determine for each instance which level of detail applies and assign it to one of the LOD models or to the impostors
 
     private void allocateLodInstances( Vector3 reference ) {
-        float scale = AREA_LENGTH;
+        if(reference.dst(prevPosition) == 0)    // early out if reference has not changed
+            return;
+        prevPosition.set(reference);
+
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
             positions[lod].clear();
 
@@ -328,17 +298,12 @@ public class GameScreen extends ScreenAdapter {
     @Override
     public void render(float deltaTime) {
 
-        if(Gdx.input.isKeyJustPressed(Input.Keys.TAB))
-            Settings.lodLevel = (Settings.lodLevel + 1 ) % (Settings.LOD_LEVELS+1);
-        if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_0))
-            Settings.lodLevel = 0;
-        if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_1))
-            Settings.lodLevel = 1;
-        if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_2))
-            Settings.lodLevel = 2;
-        if(Gdx.input.isKeyJustPressed(Input.Keys.M))
-            Settings.multiple = !Settings.multiple;
-
+        if(Gdx.input.isKeyJustPressed(Input.Keys.TAB)){
+            if(Settings.lodLevel == Settings.LOD_LEVELS)
+                Settings.lodLevel = -1; // mixed mode
+            else
+                Settings.lodLevel++;
+        }
         if(Gdx.input.isKeyJustPressed(Input.Keys.T))
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
 
@@ -355,17 +320,15 @@ public class GameScreen extends ScreenAdapter {
         camController.update();
         camera.update(true);
 
+        // avoid running the allocation update every single frame
         lodUpdate -= deltaTime;     // todo or if camera moved
         if(lodUpdate < 0) {
             lodUpdate = 0.1f;
-            allocateLodInstances( origin ); //camera.position );
+            allocateLodInstances( camera.position );
             updateInstanceData();
         }
 
         terrain.update( camera );
-
-
-
 
         if(Settings.cascadedShadows) {
             csm.setCascades(sceneManager.camera, light, 0, 10f);
@@ -374,7 +337,6 @@ public class GameScreen extends ScreenAdapter {
             light.setCenter(camera.position); // keep shadow light on player so that we have shadows
 
         sceneManager.getRenderableProviders().clear();
-        //sceneManager.addScene(groundScene);
 
         // terrain chunks are taken directly from the Terrain class, these are not game objects
         for(Scene scene : terrain.scenes)
@@ -392,7 +354,8 @@ public class GameScreen extends ScreenAdapter {
             // numVertices = lodScenes[Settings.lodLevel].modelInstance.model.meshes.first().getNumVertices();
         }
         // render
-        ScreenUtils.clear(Color.SKY, true);
+        Gdx.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);   // clear depth buffer
+
         sceneManager.update(deltaTime);
         sceneManager.render();
 
@@ -400,40 +363,17 @@ public class GameScreen extends ScreenAdapter {
 
 
         if(Settings.lodLevel == Settings.LOD_LEVELS || Settings.lodLevel < 0 ) {      // impostors
-//            if(Settings.multiple)
-//                index = 0;          // test
-//            else
-//                // which decal to use? Depends on viewing angle
-//                index = getViewingIndex(forward);
-//
-//
-////            Gdx.app.log("view angle:", ""+angle+" index:"+index);
-//
-//            ModelInstance instance = decalInstance;
-//
-//            if(!Settings.multiple) {
-//                // get billboard to face the camera
-//                instance.transform.getTranslation(pos);         // get instance position
-//                forward.set(camera.position).sub(pos).nor();        // vector towards camera
-//                right.set(camera.up).crs(forward).nor();
-//                up.set(forward).crs(right).nor();
-//                q.setFromAxes(right.x, up.x, forward.x, right.y, up.y, forward.y, right.z, up.z, forward.z);
-//                instance.transform.set(q).setTranslation(pos);
-//            }
-
             if(positions[Settings.LOD_LEVELS].size > 0) {
                 modelBatch.begin(camera);
                 modelBatch.render(decalInstance);
                 modelBatch.end();
             }
-
-            //numVertices = instance.model.meshes.first().getNumVertices();
         }
 
         terrainDebug.debugRender(Vector3.Zero, camera.position);
 
         batch.begin();
-        batch.draw(textureRegions[index], 0, 0, regionSize.x, regionSize.y);
+        batch.draw(textureRegion0, 0, 0, regionSize.x, regionSize.y);
         batch.end();
 
         gui.render(deltaTime);
@@ -467,8 +407,9 @@ public class GameScreen extends ScreenAdapter {
                 Gdx.app.log("Frame rate too low, increasing LOD1 distance to:", ""+Settings.lod1Distance);
             }
             else {
+                if(sampleTime < 10)
+                    Gdx.app.log("Target frame rate achieved", "(min "+targetFrameRate+")");
                 sampleTime = 10f;   // recheck every so often, but with lower frequency
-                Gdx.app.log("Target frame rate achieved", "(min "+targetFrameRate+")");
             }
             numSamples = 0;
             totalTime = 0;
@@ -517,25 +458,32 @@ public class GameScreen extends ScreenAdapter {
         updateInstanced(modelInstance, positions);
     }
 
+
+
     private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
+
+        if(positions.size > instanceCount) throw new GdxRuntimeException("too many instances for instance buffer");
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
-        // Create offset FloatBuffer that will contain instance data to pass to shader
-        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 16);   // 16 floats for the matrix
+        if(instanceData == null) { // on first use
+            // Create offset FloatBuffer that will contain instance data to pass to shader
+            instanceData = BufferUtils.newFloatBuffer(instanceCount * 16);   // 16 floats for the matrix
+        }
 
         // fill instance data buffer
+        instanceData.clear();
         Matrix4 instanceTransform = new Matrix4();
         for(Vector4 pos: positions) {
 
             instanceTransform.setToRotationRad(Vector3.Y, pos.w);
             instanceTransform.setTranslation(pos.x, pos.y, pos.z);
             // transpose matrix for GLSL
-            offsets.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
+            instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
-
-        offsets.position(0);      // rewind float buffer to start
-        mesh.setInstanceData(offsets);
+        instanceData.limit( positions.size * 16 );  // amount of data in buffer
+        instanceData.position(0);      // rewind float buffer to start
+        mesh.setInstanceData(instanceData);
     }
 
 
@@ -543,7 +491,7 @@ public class GameScreen extends ScreenAdapter {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
-        // add matrix per instance
+        // add vector4 per instance containing position and Y rotation
         mesh.enableInstancedRendering(false, instanceCount,
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
 
@@ -554,14 +502,13 @@ public class GameScreen extends ScreenAdapter {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
-        // Create offset FloatBuffer that will contain instance data to pass to shader
-        FloatBuffer offsets = BufferUtils.newFloatBuffer(positions.size * 4);
+        instanceData.clear();
         for(Vector4 pos: positions) {
-            offsets.put(new float[] { pos.x, pos.y, pos.z, pos.w });
+            instanceData.put(new float[] { pos.x, pos.y, pos.z, pos.w });
         }
-
-        ((Buffer)offsets).position(0);      // rewind float buffer to start
-        mesh.setInstanceData(offsets);
+        instanceData.limit( positions.size * 4 );
+        instanceData.position(0);      // rewind float buffer to start
+        mesh.setInstanceData(instanceData);
     }
 
     @Override

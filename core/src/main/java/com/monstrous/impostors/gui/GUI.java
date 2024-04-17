@@ -14,7 +14,6 @@ public class GUI {
     public Stage stage;
     private Skin skin;
 
-    private SettingsWindow settingsWindow;
     private Label fpsLabel;
     private Label[] vertsLabels;
     private Label[] instancesLabels;
@@ -79,13 +78,6 @@ public class GUI {
         screenTable.pack();
 
         stage.addActor(screenTable);
-
-//        settingsWindow = new SettingsWindow("Settings", skin, screen);
-//        Table screen2 = new Table();
-//        screen2.setFillParent(true);
-//        screen2.add(settingsWindow).right().bottom().expand();
-//        stage.addActor(screen2);
-
     }
 
     private void updateLabels(){
