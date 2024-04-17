@@ -1,4 +1,5 @@
 # Impostors aka Duck Desert
+17/04/2024
 
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
 
@@ -19,6 +20,7 @@ Controls:
 - use mouse to move camera, scroll wheel to zoom in/out
 - TAB to cycle through LOD0, LOD1, LOD2, Impostors and all
 - T to show terrain chunks
+- Z, X to change LOD distances
 
 
 
@@ -26,6 +28,8 @@ Controls:
 
 
 Notes:
+- work in progress, code needs cleaning up.
+- 
 - decals get clipped when leaning forward.  This is because the clipping rect is calculated from low elevation. At high elevation view the front spills over
  below the clipped region.  If we add a safety margin, the decals appear to be floating in the air when upright.
 

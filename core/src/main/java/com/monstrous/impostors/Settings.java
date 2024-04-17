@@ -7,6 +7,7 @@ public class Settings {
     public static int LOD_LEVELS = 3;           // must match the nr of glb files provided
     public static int lodLevel = 3;
 
+    public static boolean dynamicLODAdjustment = true;
     public static float lod1Distance = 80f;
     public static float lod2Distance = 2*lod1Distance;
     public static float impostorDistance = 2*lod2Distance;

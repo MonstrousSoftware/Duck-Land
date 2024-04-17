@@ -219,7 +219,7 @@ public class GameScreen extends ScreenAdapter {
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
             positions[lod] = new Array<>();
 
-        allocateLodInstances( origin );
+        allocateLodInstances( origin, false );
 
        // enable instancing for every LOD model
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
@@ -238,8 +238,8 @@ public class GameScreen extends ScreenAdapter {
 
     // determine for each instance which level of detail applies and assign it to one of the LOD models or to the impostors
 
-    private void allocateLodInstances( Vector3 reference ) {
-        if(reference.dst(prevPosition) == 0)    // early out if reference has not changed
+    private void allocateLodInstances( Vector3 reference, boolean force ) {
+        if(!force && reference.dst(prevPosition) == 0)    // early out if reference has not changed
             return;
         prevPosition.set(reference);
 
@@ -308,6 +308,23 @@ public class GameScreen extends ScreenAdapter {
         if(Gdx.input.isKeyJustPressed(Input.Keys.T))
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
 
+        if(Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+            Settings.lod1Distance *= 2f;
+            Settings.lod2Distance = 2*Settings.lod1Distance;
+            Settings.impostorDistance = 2*Settings.lod2Distance;
+            Settings.dynamicLODAdjustment = false;
+            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lod1Distance);
+            allocateLodInstances( origin, true );
+        }
+        if(Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+            Settings.lod1Distance *= 0.5f;
+            Settings.lod2Distance = 2*Settings.lod1Distance;
+            Settings.impostorDistance = 2*Settings.lod2Distance;
+            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lod1Distance);
+            Settings.dynamicLODAdjustment = false;
+            allocateLodInstances( origin, true );
+        }
+
 
         // animate camera
 //        viewAngle += deltaTime;
@@ -325,7 +342,7 @@ public class GameScreen extends ScreenAdapter {
         lodUpdate -= deltaTime;     // todo or if camera moved
         if(lodUpdate < 0) {
             lodUpdate = 0.1f;
-            allocateLodInstances( camera.position );
+            allocateLodInstances( camera.position, false );
             updateInstanceData();
         }
 
@@ -379,7 +396,8 @@ public class GameScreen extends ScreenAdapter {
 
         gui.render(deltaTime);
 
-        adjustDetailToFrameRate(deltaTime, 60);
+        if(Settings.dynamicLODAdjustment)
+            adjustDetailToFrameRate(deltaTime, 60);
     }
 
 
