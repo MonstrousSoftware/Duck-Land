@@ -15,6 +15,7 @@ import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.ScreenUtils;
 import com.monstrous.impostors.gui.GUI;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
@@ -354,7 +355,7 @@ public class GameScreen extends ScreenAdapter {
             // numVertices = lodScenes[Settings.lodLevel].modelInstance.model.meshes.first().getNumVertices();
         }
         // render
-        Gdx.gl.glClear(GL20.GL_DEPTH_BUFFER_BIT);   // clear depth buffer
+        ScreenUtils.clear(Color.SKY, true);
 
         sceneManager.update(deltaTime);
         sceneManager.render();
