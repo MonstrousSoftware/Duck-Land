@@ -70,7 +70,7 @@ public class SceneryDebug {
             pos.x /=SceneryChunk.CHUNK_SIZE;
             pos.z /=SceneryChunk.CHUNK_SIZE;
             convert(pos);
-            if(chunk.lastSeen != scenery.timeCounter)
+            if(chunk.lastSeen != scenery.lastCameraChange)
                 batch.draw(textureRegionChunkNotVisible, pos.x, pos.y-SIZE, size-2, size-2);
             else switch(chunk.getLodLevel()) {
                 case 0:              batch.draw(textureRegionChunk0, pos.x, pos.y - SIZE, size - 2, size - 2); break;
