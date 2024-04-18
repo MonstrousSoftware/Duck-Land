@@ -20,7 +20,7 @@ public class Settings {
     public static boolean cascadedShadows = false;
 
     // Terrain
-    static public float     terrainChunkSize = 4096;
+    static public float     terrainChunkSize = 2048;
     static public int       terrainChunkCacheSize = 100;
     static public boolean   debugTerrainChunkAllocation = false;
 
@@ -29,4 +29,7 @@ public class Settings {
     static public int       sceneryChunkCacheSize = 20000;
 
     static public boolean   skipChecksWhenCameraStill = true;       // don't recalculate when camera doesn't move, set to false when tuning for performance
+
+
+    static public boolean   invertLook = false;
 }

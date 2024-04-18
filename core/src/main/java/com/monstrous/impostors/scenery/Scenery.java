@@ -17,7 +17,6 @@ import com.monstrous.impostors.Settings;
 import com.monstrous.impostors.Statistic;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
-import com.monstrous.impostors.terrain.TerrainChunk;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
@@ -39,6 +38,7 @@ public class Scenery implements Disposable {
 
 
     private final Terrain terrain;
+    private final float separationDistance;
     public Statistic[] statistics;
     public int instanceCount = 1;
     final Map<Integer, SceneryChunk> chunks;        // map of terrain chunk per grid point
@@ -62,8 +62,9 @@ public class Scenery implements Disposable {
     private final Array<SceneryChunk> visibleChunks;
     private FloatBuffer instanceData;   // temp buffer to transfer instance data
 
-    public Scenery( Terrain terrain ) {
+    public Scenery( Terrain terrain, float separationDistance ) {
         this.terrain = terrain;
+        this.separationDistance = separationDistance;
 
         chunks = new HashMap<>();
         chunksInRange = new Array<>();
@@ -75,7 +76,7 @@ public class Scenery implements Disposable {
         lastCameraMove = 0;
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            //sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
+            //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
             SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
@@ -150,6 +151,15 @@ public class Scenery implements Disposable {
     }
 
     public Array<Scene> getScenes(){
+        // for the sake of debug options we rebuild this as needed
+        scenes.clear();
+        if(Settings.lodLevel == -1) {
+            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
+                scenes.add(lodScenes[lod]);
+            }
+        }
+        else if (Settings.lodLevel < Settings.LOD_LEVELS)
+            scenes.add(lodScenes[Settings.lodLevel]);
         return scenes;
     }
 
@@ -205,7 +215,7 @@ public class Scenery implements Disposable {
 
                     SceneryChunk chunk = chunks.get(key);
                     if (chunk == null) {
-                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain);
+                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
                         chunks.put(key, chunk);
                         //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
                     }

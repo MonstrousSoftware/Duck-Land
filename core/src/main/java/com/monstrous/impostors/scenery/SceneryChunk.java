@@ -8,8 +8,8 @@ import com.monstrous.impostors.PoissonDistribution;
 import com.monstrous.impostors.terrain.Terrain;
 
 public class SceneryChunk implements Disposable {
-    public static final float CHUNK_SIZE = 256;            // in world units
-    private static final int SEPARATION_DISTANCE = 20;
+    public static final float CHUNK_SIZE = 128;            // in world units
+
 
     private Array<Vector4> instancePositions;
     private Vector3 chunkPosition;              // world position of chunk centre
@@ -19,7 +19,7 @@ public class SceneryChunk implements Disposable {
     public int creationTime;
     public int key;
 
-    public SceneryChunk(int cx, int cz, int creationTime, int key, Terrain terrain) {
+    public SceneryChunk(int cx, int cz, int creationTime, int key, Terrain terrain, float separationDistance) {
         this.creationTime = creationTime;
         this.key = key;
         float x = cx*CHUNK_SIZE+CHUNK_SIZE/2;
@@ -32,7 +32,7 @@ public class SceneryChunk implements Disposable {
         // generate a random poisson distribution of instances over a rectangular area, meaning instances are never too close together
         MathUtils.random.setSeed(cx * 345 + cz * 56700);         // fix the random distribution to always be identical per chunk
         Rectangle area = new Rectangle(1, 1, CHUNK_SIZE, CHUNK_SIZE);
-        Array<Vector2> points = PoissonDistribution.generatePoissonDistribution(SEPARATION_DISTANCE, area);
+        Array<Vector2> points = PoissonDistribution.generatePoissonDistribution(separationDistance, area);
 
         //instanceCount = points.size;
 

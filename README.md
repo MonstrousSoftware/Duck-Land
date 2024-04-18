@@ -16,12 +16,19 @@ This make take a few seconds to adjust.
 Based on a demo by Erkka from Enormous Elk shared in the LibGDX Discord server.
 
 
-Controls:
-- use mouse to move camera, scroll wheel to zoom in/out
+Movement Controls:
+- use mouse to move camera
+- WASD to move
+- Q/E to move up and down
+- SPACE for turbo boost
+
+Demo Options:
 - TAB to cycle through LOD0, LOD1, LOD2, Impostors and all
 - T to show terrain chunks
 - P to toggle scenery chunks (colour indicated LOD level)
 - Z, X to change LOD distances
+
+
 
 
 
@@ -35,17 +42,18 @@ Notes:
  below the clipped region.  If we add a safety margin, the decals appear to be floating in the air when upright.
 
 - Known issue: when viewing from above the impostors flatten out sideways leaving a hole in the middle.
+- Known issues: at some locations the ducks are not at terrain height but in a floating square above the ground.
 
 To do/ideas:
 - DONE:  Frustum culling 
 
 - DONE: The instances could be generated in chunks 
-- Using the chunks we could polulate an infinite amount (like the terrain chunks)
+- DONEUsing the chunks we could polulate an infinite amount (like the terrain chunks)
 - DONE: LOD level could be determined per chunk for faster allocation
 - Could use an indirect buffer to index the instance transforms, to exchange less data per frame (1 integer instead of 16 floats).  Because the locations are static, they are just allocated
 to different LOD models over time.
 
 - we could perhaps avoid the copying of the FloatBuffer performed by setInstanceData() if we get hold of the buffer via InstanceData.getBuffer() (but Mesh.instances is package private).
-
+- can we avoid wasting some much memory on a temp FloatBuffer?
 
 

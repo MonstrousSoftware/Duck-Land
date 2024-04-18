@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.monstrous.impostors.gui.GUI;
+import com.monstrous.impostors.inputs.CameraController;
 import com.monstrous.impostors.scenery.Scenery;
 import com.monstrous.impostors.scenery.SceneryDebug;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
@@ -46,7 +47,7 @@ public class GameScreen extends ScreenAdapter {
     private Texture brdfLUT;
     private SceneSkybox skybox;
     private DirectionalShadowLight light;
-    private CameraInputController camController;
+    private CameraController camController;
     private float cameraDistance;
     private GUI gui;
     private ModelBatch modelBatch;
@@ -66,6 +67,10 @@ public class GameScreen extends ScreenAdapter {
 
         gui = new GUI( this );
 
+        // hide the mouse cursor and fix it to screen centre, so it doesn't go out the window canvas
+        Gdx.input.setCursorCatched(true);
+        Gdx.input.setCursorPosition(Gdx.graphics.getWidth() / 2, Gdx.graphics.getHeight() / 2);
+
         // create scene manager
         // but use our own shader providers for PBR shaders that support instanced meshes
         sceneManager = new SceneManager( new InstancedPBRShaderProvider(), new InstancedPBRDepthShaderProvider() );
@@ -74,7 +79,7 @@ public class GameScreen extends ScreenAdapter {
         camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 40f;
         camera.near = 1f;
-        camera.far = 15000f;
+        camera.far = 8192f;
         camera.position.set(0, 20, 50);
 		camera.up.set(Vector3.Y);
 		camera.lookAt(Vector3.Zero);
@@ -89,8 +94,7 @@ public class GameScreen extends ScreenAdapter {
         // input multiplexer to input to GUI and to cam controller
         InputMultiplexer im = new InputMultiplexer();
         Gdx.input.setInputProcessor(im);
-        camController = new CameraInputController(camera);
-        camController.scrollFactor = -2f;   // fast zoom
+        camController = new CameraController(camera, terrain);
         im.addProcessor(gui.stage);
         im.addProcessor(camController);
 
@@ -133,7 +137,7 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain);
+        scenery = new Scenery(terrain, 20);
         sceneryDebug = new SceneryDebug( scenery );
 
 
@@ -142,15 +146,17 @@ public class GameScreen extends ScreenAdapter {
 
 
 
-    private Vector3 forward = new Vector3();
-    private Vector3 right = new Vector3();
-    private Vector3 up = new Vector3();
-    private Quaternion q = new Quaternion();
-
-    private float lodUpdate = 0.5f;
+//    private Vector3 forward = new Vector3();
+//    private Vector3 right = new Vector3();
+//    private Vector3 up = new Vector3();
+//    private Quaternion q = new Quaternion();
 
     @Override
     public void render(float deltaTime) {
+
+        if(Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)){
+            Gdx.app.exit();
+        }
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.TAB)){
             if(Settings.lodLevel == Settings.LOD_LEVELS)
@@ -164,7 +170,7 @@ public class GameScreen extends ScreenAdapter {
             Settings.debugSceneryChunkAllocation = !Settings.debugSceneryChunkAllocation;
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
-            Settings.lod1Distance *= 2f;
+            Settings.lod1Distance *= 1.1f;
             Settings.lod2Distance = 2*Settings.lod1Distance;
             Settings.impostorDistance = 2*Settings.lod2Distance;
             Settings.dynamicLODAdjustment = false;
@@ -172,7 +178,7 @@ public class GameScreen extends ScreenAdapter {
             scenery.update( camera, true );
         }
         if(Gdx.input.isKeyJustPressed(Input.Keys.X)) {
-            Settings.lod1Distance *= 0.5f;
+            Settings.lod1Distance *= 0.9f;
             Settings.lod2Distance = 2*Settings.lod1Distance;
             Settings.impostorDistance = 2*Settings.lod2Distance;
             Gdx.app.log("Update LOD1 distance to:", ""+Settings.lod1Distance);
@@ -189,9 +195,9 @@ public class GameScreen extends ScreenAdapter {
 //        camera.position.y = .3f*cameraDistance;
 
         camera.up.set(Vector3.Y);
-        camera.lookAt(Vector3.Zero);
-        camController.update();
-        camera.update(true);
+//        camera.lookAt(Vector3.Zero);
+        camController.update( deltaTime );
+//        camera.update(true);
 
         terrain.update( camera );
         scenery.update( camera, !Settings.skipChecksWhenCameraStill );
@@ -280,6 +286,8 @@ public class GameScreen extends ScreenAdapter {
 
     @Override
     public void hide () {
+
+        Gdx.input.setCursorCatched(false);
         dispose();
     }
 

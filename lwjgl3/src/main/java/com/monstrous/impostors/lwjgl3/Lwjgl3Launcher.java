@@ -29,6 +29,8 @@ public class Lwjgl3Launcher {
 
         // Use OpenGL 4.3 to emulate GL ES 3.0
         configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30, 4,3);
+        // anti-aliasing
+        configuration.setBackBufferConfig(8, 8, 8, 8, 16, 0, 4);
         return configuration;
     }
 }
