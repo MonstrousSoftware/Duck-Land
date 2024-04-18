@@ -129,7 +129,7 @@ public class Terrain implements Disposable {
         Integer key = makeKey(cx, cz);
         TerrainChunk chunk = chunks.get(key);
         if(chunk == null){
-            Gdx.app.error("position outside chunks", "x:"+x+", z:"+z);
+            //Gdx.app.error("position outside chunks", "x:"+x+", z:"+z);
             return 0;
         }
         return chunk.getHeight(x - cx*Settings.terrainChunkSize, z - cz*Settings.terrainChunkSize);

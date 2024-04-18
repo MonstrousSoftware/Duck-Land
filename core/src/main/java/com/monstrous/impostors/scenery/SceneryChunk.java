@@ -8,7 +8,7 @@ import com.monstrous.impostors.PoissonDistribution;
 import com.monstrous.impostors.terrain.Terrain;
 
 public class SceneryChunk implements Disposable {
-    public static final float CHUNK_SIZE = 128;            // in world units
+    public static final float CHUNK_SIZE = 256;            // in world units
     private static final int SEPARATION_DISTANCE = 20;
 
     private Array<Vector4> instancePositions;

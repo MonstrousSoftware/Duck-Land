@@ -5,10 +5,7 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
-import com.badlogic.gdx.math.Matrix4;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.math.Vector4;
+import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
@@ -162,9 +159,9 @@ public class Scenery implements Disposable {
     }
 
 
-    private Vector2 centre = new Vector2();
-    private Vector2 v = new Vector2();
-    private Vector2 prevCentre = new Vector2(Integer.MAX_VALUE,Integer.MAX_VALUE);
+    private GridPoint2 centre = new GridPoint2();
+    private GridPoint2 v = new GridPoint2();
+    private GridPoint2 prevCentre = new GridPoint2(Integer.MAX_VALUE,Integer.MAX_VALUE);
     private PerspectiveCamera prevCam = new PerspectiveCamera();
 
 
@@ -233,11 +230,18 @@ public class Scenery implements Disposable {
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
             positions[lod].clear();
 
+        Integer centreKey = makeKey(centre.x, centre.y);
         for(SceneryChunk chunk : visibleChunks ){
 
-            float distance2 = cam.position.dst2(chunk.getWorldPosition());
-            int level = determineLODlevel(distance2);
-            chunk.setLodLevel(level);
+            int level;
+
+            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
+                level = 0;
+            else {
+                float distance2 = cam.position.dst2(chunk.getWorldPosition());
+                level = determineLODlevel(distance2);
+                chunk.setLodLevel(level);
+            }
 
             if(level == 0)      // for chunks at LOD0 level, go to individual instance level
                 allocateInstances(cam, chunk.getPositions() );
