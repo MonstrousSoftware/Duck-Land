@@ -4,6 +4,7 @@
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
 
 Demo of rendering many items at reasonable frame rate.
+REQUIRES OPENGL 4.3.
 
 Uses multiple levels of details for the model (need to be supplied as glb files). 
 Uses impostors (billboards) at long distance (these are generated on the fly).
