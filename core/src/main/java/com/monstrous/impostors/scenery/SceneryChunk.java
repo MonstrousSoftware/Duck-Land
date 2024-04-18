@@ -16,8 +16,12 @@ public class SceneryChunk implements Disposable {
     public BoundingBox bbox;
     private int lodLevel;
     public int lastSeen;
+    public int creationTime;
+    public int key;
 
-    public SceneryChunk(int cx, int cz, int creationTime, Terrain terrain) {
+    public SceneryChunk(int cx, int cz, int creationTime, int key, Terrain terrain) {
+        this.creationTime = creationTime;
+        this.key = key;
         float x = cx*CHUNK_SIZE+CHUNK_SIZE/2;
         float z = cz*CHUNK_SIZE+CHUNK_SIZE/2;
         float h = terrain.getHeight(x, z);

@@ -9,6 +9,7 @@ import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.Vector4;
+import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
@@ -19,6 +20,7 @@ import com.monstrous.impostors.Settings;
 import com.monstrous.impostors.Statistic;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
+import com.monstrous.impostors.terrain.TerrainChunk;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
@@ -48,6 +50,7 @@ public class Scenery implements Disposable {
     int lastCameraMove;                             // time stamp of last camera move (to new chunk)
     private final Array<Scene> scenes;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
+    private final float radius;
     private Array<Vector4>[] positions;
     private final ImpostorBuilder builder;
     private final Texture impostorTexture;
@@ -79,6 +82,13 @@ public class Scenery implements Disposable {
             SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
+
+        BoundingBox modelBoundingBox = new BoundingBox();
+        lodScenes[0].modelInstance.calculateBoundingBox(modelBoundingBox);          // get dimensions of model
+        Vector3 dimensions = new Vector3();
+        modelBoundingBox.getDimensions(dimensions);
+        radius = dimensions.len() / 2f;     // determine model radius for frustum clipping
+
 
         positions = new Array[Settings.LOD_LEVELS+1];
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)
@@ -160,9 +170,12 @@ public class Scenery implements Disposable {
 
     public void update(PerspectiveCamera cam){
         timeCounter++;
-        // quick exit if camera has not changed
-        if(cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction) && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
+
+        // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
+        if(Settings.skipChecksWhenCameraStill && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
+            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
             return;
+
         lastCameraChange = timeCounter;
         // remember current camera settings for next call
         prevCam.position.set(cam.position);
@@ -195,8 +208,9 @@ public class Scenery implements Disposable {
 
                     SceneryChunk chunk = chunks.get(key);
                     if (chunk == null) {
-                        chunk = new SceneryChunk(cx, cz, timeCounter, terrain);
+                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain);
                         chunks.put(key, chunk);
+                        //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
                     }
                     chunksInRange.add(chunk);
                 }
@@ -225,7 +239,10 @@ public class Scenery implements Disposable {
             int level = determineLODlevel(distance2);
             chunk.setLodLevel(level);
 
-            positions[level].addAll( chunk.getPositions() );
+            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+                allocateInstances(cam, chunk.getPositions() );
+            else
+                positions[level].addAll( chunk.getPositions() );
         }
 
 
@@ -244,12 +261,47 @@ public class Scenery implements Disposable {
         }
         if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
 
+
+        if( chunks.size() > Settings.sceneryChunkCacheSize){
+            // find the last seen chunk
+            SceneryChunk oldest = null;
+            for(SceneryChunk chunk : chunks.values()){
+                if(oldest == null || chunk.lastSeen < oldest.lastSeen)
+                    oldest = chunk;
+            }
+            // now remove this chunk
+            if(oldest != null) {
+                int before = chunks.size();
+                chunks.remove(oldest.key);
+                oldest.dispose();
+                oldest = null;
+                Gdx.app.log("deleting scenery chunk", "num chunks "+chunks.size() + " before: "+before);
+            }
+        }
     }
 
     // convert chunk (X,Y) to a single integer for easy use as a key in the hash map
     private int makeKey(int cx, int cz) {
         return cx + 1000 * cz;
     }
+
+    private Vector3 instancePosition = new Vector3();
+
+    // allocate instanced from this list on individual basis to LOD level
+    // also perform individual frustum clipping
+    //
+    private void allocateInstances( Camera cam, Array<Vector4> positionsFromChunk ){
+        for(Vector4 position : positionsFromChunk ){
+
+            instancePosition.set( position.x, position.y, position.z );
+            if(cam.frustum.sphereInFrustum(instancePosition, radius)) {
+                float distance2 = cam.position.dst2(instancePosition);
+                int level = determineLODlevel(distance2);
+                positions[level].add(position);
+            }
+        }
+    }
+
 
     private int determineLODlevel( float distance2 ){
         // allocate this instance to one of the LOD levels depending on the distance
