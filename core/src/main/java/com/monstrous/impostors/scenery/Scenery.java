@@ -168,11 +168,11 @@ public class Scenery implements Disposable {
     private PerspectiveCamera prevCam = new PerspectiveCamera();
 
 
-    public void update(PerspectiveCamera cam){
+    public void update(PerspectiveCamera cam, boolean forceUpdate){
         timeCounter++;
 
         // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
-        if(Settings.skipChecksWhenCameraStill && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
+        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
             && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
             return;
 
