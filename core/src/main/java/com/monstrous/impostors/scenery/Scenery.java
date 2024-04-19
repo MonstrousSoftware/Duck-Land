@@ -32,9 +32,9 @@ import java.util.Map;
 
 
 public class Scenery implements Disposable {
-    private static final int RANGE = 32;               // viewing range in chunks
+    private static final int RANGE = 8;               // viewing range in chunks
 
-    private static final int MAX_INSTANCES = 500000;
+    private static final int MAX_INSTANCES = 10000;
 
 
     private final Terrain terrain;
