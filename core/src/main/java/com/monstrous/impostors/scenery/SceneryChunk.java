@@ -18,8 +18,12 @@ public class SceneryChunk implements Disposable {
     public int lastSeen;
     public int creationTime;
     public int key;
+    public int ssboOffset; // tmp
+    public int cx, cz;
 
     public SceneryChunk(int cx, int cz, int creationTime, int key, Terrain terrain, float separationDistance) {
+        this.cx = cx;
+        this.cz = cz;
         this.creationTime = creationTime;
         this.key = key;
         float x = cx*CHUNK_SIZE+CHUNK_SIZE/2;

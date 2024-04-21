@@ -34,8 +34,8 @@ import java.util.Map;
 public class Scenery implements Disposable {
     private static final int RANGE = 8;               // viewing range in chunks
 
-    private static final int MAX_INSTANCES = 1000;
-    private static final int MAX_DECALS = 5000;
+    private static final int MAX_INSTANCES = 5000;
+    private static final int MAX_DECALS = 50000;
 
     private final Terrain terrain;
     private final float separationDistance;
@@ -64,7 +64,7 @@ public class Scenery implements Disposable {
     private FloatBuffer instanceData;   // temp buffer to transfer instance data
     private int ssbo;
 
-    public Scenery( Terrain terrain, float separationDistance ) {
+    public Scenery( Terrain terrain, float separationDistance, PerspectiveCamera cam ) {
         this.terrain = terrain;
         this.separationDistance = separationDistance;
 
@@ -97,7 +97,7 @@ public class Scenery implements Disposable {
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
         // we are dimensioning it for a worst case, which means we probably waste a lot of memory here (e.g. 32Mb)
-        instanceData = BufferUtils.newFloatBuffer(MAX_INSTANCES * 16);   // 16 floats for the matrix
+        instanceData = BufferUtils.newFloatBuffer(MAX_DECALS * 16);   // 16 floats for the matrix
 
         // Create impostors
         //
@@ -121,8 +121,6 @@ public class Scenery implements Disposable {
 
 
         int y = 0;
-
-
 
         // create decal instance
         Model model = Impostor.createImposterModel(textureRegion0, lodScenes[0].modelInstance);
@@ -154,6 +152,8 @@ public class Scenery implements Disposable {
 
         Settings.lodLevel = -1;     // show all LOD levels and impostors
 
+        initDecals(cam);
+
     }
 
     public Array<Scene> getScenes(){
@@ -182,6 +182,67 @@ public class Scenery implements Disposable {
     private GridPoint2 prevCentre = new GridPoint2(Integer.MAX_VALUE,Integer.MAX_VALUE);
     private PerspectiveCamera prevCam = new PerspectiveCamera();
 
+    // TEMP: fixed decal instances
+    private void initDecals( PerspectiveCamera cam ){
+        // Create all chunks
+        int px = 0;
+        int pz = 0;
+        centre.set(px,pz);
+        chunksInRange.clear();
+        for (int cx = px - RANGE; cx <= px + RANGE; cx++) {
+            for (int cz = pz - RANGE; cz <= pz + RANGE; cz++) {
+
+                // quickly discard chunks outside a circular range
+                v.set(cx, cz);
+                if (v.dst2(centre) > RANGE * RANGE)
+                    continue;
+
+                Integer key = makeKey(cx, cz);
+
+                SceneryChunk chunk = chunks.get(key);
+                if (chunk == null) {
+                    chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
+                    chunks.put(key, chunk);
+                }
+                chunksInRange.add(chunk);
+            }
+        }
+
+
+        // Put data for all instances in the SSBO
+        allPositions.clear();
+        int offset = 0;
+        for(SceneryChunk chunk : chunksInRange ){
+            chunk.ssboOffset = offset;                  // give each chunk its offset in the ssbo
+            allPositions.addAll(chunk.getPositions());
+            offset += chunk.getPositions().size;
+        }
+        updateSSBOdata( allPositions );
+
+        // Select chunks that are in camera frustum
+        //
+        visibleChunks.clear();
+        for(SceneryChunk chunk : chunksInRange ) {
+            if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
+                visibleChunks.add(chunk);
+                chunk.lastSeen = timeCounter;
+            }
+        }
+
+
+        // Add index data for visible chunks
+        resetDecalIndices();
+        int numDecals = 0;
+        for(SceneryChunk chunk : visibleChunks ) {
+            numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
+        }
+        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
+        statistics[Settings.LOD_LEVELS].instanceCount = numDecals;
+
+
+    }
+
+
 
     public void update(PerspectiveCamera cam, boolean forceUpdate){
         timeCounter++;
@@ -208,30 +269,40 @@ public class Scenery implements Disposable {
         // Create a list of chunks within visual range of the camera.
         // Chunks are created if necessary.
         //
-        if( !centre.equals(prevCentre) ) {  // if camera moved to new square
-            lastCameraMove = timeCounter;
-            chunksInRange.clear();
-            for (int cx = px - RANGE; cx <= px + RANGE; cx++) {
-                for (int cz = pz - RANGE; cz <= pz + RANGE; cz++) {
+//        if( !centre.equals(prevCentre) ) {  // if camera moved to new square
+//            lastCameraMove = timeCounter;
+//            chunksInRange.clear();
+//            for (int cx = px - RANGE; cx <= px + RANGE; cx++) {
+//                for (int cz = pz - RANGE; cz <= pz + RANGE; cz++) {
+//
+//                    // quickly discard chunks outside a circular range
+//                    v.set(cx, cz);
+//                    if (v.dst2(centre) > RANGE * RANGE)
+//                        continue;
+//
+//                    Integer key = makeKey(cx, cz);
+//
+//                    SceneryChunk chunk = chunks.get(key);
+//                    if (chunk == null) {
+//                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
+//                        chunks.put(key, chunk);
+//                        //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
+//                    }
+//                    chunksInRange.add(chunk);
+//                }
+//            }
+//            prevCentre.set(centre);
+//        }
 
-                    // quickly discard chunks outside a circular range
-                    v.set(cx, cz);
-                    if (v.dst2(centre) > RANGE * RANGE)
-                        continue;
-
-                    Integer key = makeKey(cx, cz);
-
-                    SceneryChunk chunk = chunks.get(key);
-                    if (chunk == null) {
-                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
-                        chunks.put(key, chunk);
-                        //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
-                    }
-                    chunksInRange.add(chunk);
-                }
-            }
-            prevCentre.set(centre);
-        }
+        // Put data for all instances in the SSBO
+//        allPositions.clear();
+//        int offset = 0;
+//        for(SceneryChunk chunk : chunksInRange ){
+//            chunk.ssboOffset = offset;                  // give each chunk its offset in the ssbo
+//            allPositions.addAll(chunk.getPositions());
+//            offset += chunk.getPositions().size;
+//        }
+//        updateSSBOdata( allPositions );
 
         // Select chunks that are in camera frustum
         //
@@ -240,81 +311,87 @@ public class Scenery implements Disposable {
             if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
                 visibleChunks.add(chunk);
                 chunk.lastSeen = timeCounter;
+                chunk.setLodLevel(3);
             }
         }
 
-        // Put data for all visible instances in the SSBO
-        allPositions.clear();
-        for(SceneryChunk chunk : visibleChunks ){
-            allPositions.addAll(chunk.getPositions());
-        }
-        updateSSBOdata( allPositions );
-
-        // Now get the instance data from all visible chunks
-        //
-        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
-            positions[lod].clear();
 
 
-        Integer centreKey = makeKey(centre.x, centre.y);
-        int offset = 0;
-        indexListTop = 0;
-        for(SceneryChunk chunk : visibleChunks ){
+//        // Now get the instance data from all visible chunks
+//        //
+//        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
+//            positions[lod].clear();
+//
+//
+//        Integer centreKey = makeKey(centre.x, centre.y);
+//        indexListTop = 0;
+//        //int numDecals = 0;
+//        for(SceneryChunk chunk : visibleChunks ){
 
-            int level;
-
-            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
-                level = 0;
-            else {
-                float distance2 = cam.position.dst2(chunk.getWorldPosition());
-                level = determineLODlevel(distance2);
-                chunk.setLodLevel(level);
-            }
-
-//            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
-//                allocateInstances(cam, chunk.getPositions() );
+//            int level;
+//
+//            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
+//                level = 0;
+//            else {
+//                float distance2 = cam.position.dst2(chunk.getWorldPosition());
+//                level = determineLODlevel(distance2);
+//                chunk.setLodLevel(level);
+//            }
+//
+////            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+////                allocateInstances(cam, chunk.getPositions() );
+////            else
+//            if (level == Settings.LOD_LEVELS)
+//                numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
 //            else
-                if (level == Settings.LOD_LEVELS)
-                addDecalIndices(offset, chunk.getPositions().size);
-            else
-                positions[level].addAll( chunk.getPositions() );
-            offset += chunk.getPositions().size;
-        }
+//                positions[level].addAll( chunk.getPositions() );
+//        }
 
 
         // Update instance data for every LOD model and the impostor model
         //
-        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
-            updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
-        updateInstancedDecals(decalInstance, offset);    // instances for decal
+//        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+//            updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
+//        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
+
+
+        // Add index data for visible chunks
+
+        resetDecalIndices();
+        int numDecals = 0;
+        for(SceneryChunk chunk : visibleChunks ) {
+            numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
+        }
+        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
+        statistics[Settings.LOD_LEVELS].instanceCount = numDecals;
 
 
         // Update the stats for the GUI
         //
-        instanceCount = 0;
-        for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
-            statistics[lod].instanceCount = positions[lod].size;
-            instanceCount += positions[lod].size;
-        }
-        if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
+//        instanceCount = 0;
+//        for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+//            statistics[lod].instanceCount = positions[lod].size;
+//            instanceCount += positions[lod].size;
+//        }
+//        if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
 
 
-        if( chunks.size() > Settings.sceneryChunkCacheSize){
-            // find the last seen chunk
-            SceneryChunk oldest = null;
-            for(SceneryChunk chunk : chunks.values()){
-                if(oldest == null || chunk.lastSeen < oldest.lastSeen)
-                    oldest = chunk;
-            }
-            // now remove this chunk
-            if(oldest != null) {
-                int before = chunks.size();
-                chunks.remove(oldest.key);
-                oldest.dispose();
-                oldest = null;
-                Gdx.app.log("deleting scenery chunk", "num chunks "+chunks.size() + " before: "+before);
-            }
-        }
+//        if( chunks.size() > Settings.sceneryChunkCacheSize){
+//            // find the last seen chunk
+//            SceneryChunk oldest = null;
+//            for(SceneryChunk chunk : chunks.values()){
+//                if(oldest == null || chunk.lastSeen < oldest.lastSeen)
+//                    oldest = chunk;
+//            }
+//            // now remove this chunk
+//            if(oldest != null) {
+//                int before = chunks.size();
+//                chunks.remove(oldest.key);
+//                oldest.dispose();
+//                oldest = null;
+//                Gdx.app.log("deleting scenery chunk", "num chunks "+chunks.size() + " before: "+before);
+//            }
+//        }
     }
 
     // convert chunk (X,Y) to a single integer for easy use as a key in the hash map
@@ -384,6 +461,7 @@ public class Scenery implements Disposable {
             instanceTransform.setToRotationRad(Vector3.Y, pos.w);
             instanceTransform.setTranslation(pos.x, pos.y, pos.z);
             // transpose matrix for GLSL
+            //instanceData.put(instanceTransform.getValues());
             instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
         instanceData.limit( positions.size * 16 );  // amount of data in buffer
@@ -452,10 +530,10 @@ public class Scenery implements Disposable {
             // transpose matrix for GLSL
             instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
-        instanceData.limit( positions.size * 4 );
+        instanceData.limit( positions.size * 16 );
         instanceData.position(0);      // rewind float buffer to start
 
-        int sizeInBytes = positions.size * 4 * 4;
+        int sizeInBytes = positions.size  * 4 * 16;
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
         Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, instanceData,
             GL31.GL_DYNAMIC_DRAW);
@@ -465,11 +543,16 @@ public class Scenery implements Disposable {
     private float [] indexList = new float[MAX_DECALS];          // even though we have integers, we can only pass as floats
     private int indexListTop;
 
-    private void addDecalIndices(int start, int count) {
+    private void resetDecalIndices(){
+        indexListTop = 0;
+    }
+
+    private int addDecalIndices(int start, int count) {
          for(int i = 0; i < count; i++){
             indexList[indexListTop+i] = start+i;
         }
         indexListTop += count;
+        return indexListTop;
     }
 
     private void updateInstancedDecals( ModelInstance modelInstance, int count ) {
@@ -481,7 +564,7 @@ public class Scenery implements Disposable {
 //        for(int i = 0; i < positions.size; i++){
 //            indexList[i] = i;
 //        }
-        mesh.setInstanceData(indexList, 0, indexListTop);
+        mesh.setInstanceData(indexList, 0, count);
 
     }
 

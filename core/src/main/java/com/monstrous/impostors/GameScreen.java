@@ -137,7 +137,10 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain, 30);
+        camera.up.set(Vector3.Y);
+        camController.update( 0.1f );
+        camera.update(true);
+        scenery = new Scenery(terrain, 30, camera);
         sceneryDebug = new SceneryDebug( scenery );
 
 

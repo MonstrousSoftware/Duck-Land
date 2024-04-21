@@ -69,17 +69,16 @@ vec2 getUVoffset(vec3 camera, vec3 instancePosition, mat4 instanceTransform)
 
 void main () {
     int index = int(i_index);
-    mat4 iMat = instanceData[index]; //gl_InstanceID];
+    mat4 iMat = instanceData[index];
+    //mat4 iMat = instanceData[gl_InstanceID];
+
 
     vec3 worldPos = vec3(iMat[0][3], iMat[1][3], iMat[2][3]);   // extract translation
+    //vec3 worldPos = vec3( iMat[3] );
 
     texCoords = a_texCoord0 + getUVoffset(u_camPos, worldPos, iMat);
 
     mat3 decalRotMatrix = calcLookAtMatrix( u_camPos, worldPos);
-
-
-    //gl_Position = u_projViewTrans *  instanceTransform * vec4(decalRotMatrix * a_position + data.position, 1.0);
-
 
     gl_Position = u_projViewTrans *  vec4(decalRotMatrix * a_position + worldPos, 1.0);
 }
