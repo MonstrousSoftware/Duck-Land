@@ -16,9 +16,9 @@ public class InstancedPBRShaderProvider extends PBRShaderProvider {
     @Override
     public String createPrefixBase(Renderable renderable, PBRShaderConfig config) {
         if(Gdx.app.getType() == Application.ApplicationType.Desktop)
-            config.glslVersion = "#version 140\n" + "#define GLSL3\n";
+            config.glslVersion = "#version 460 core\n"; //"#version 140\n" + "#define GLSL3\n";
         else
-            config.glslVersion = "#version 300 es\n" + "#define GLSL3\n";
+            config.glslVersion = "#version 460 core\n"; //"#version 300 es\n" + "#define GLSL3\n";
         return super.createPrefixBase(renderable, config);
     }
 

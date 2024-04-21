@@ -22,7 +22,14 @@
 
 // MS
 #if defined(instanced)
-    attribute mat4 i_worldTrans;
+layout(std140) readonly buffer ssbo {
+    mat4 instanceData[];  // world transform
+};
+
+
+
+    attribute float i_index;
+    //attribute mat4 i_worldTrans;
 #endif // instanced
 
 
@@ -313,6 +320,8 @@ void main() {
     // MS
     vec3 normalVec = a_normal;
     #if defined(instanced)
+        int index = int(i_index);
+        mat4 i_worldTrans = instanceData[index];
         pos *= i_worldTrans;
         normalVec = a_normal * transpose(inverse(mat3(i_worldTrans)));
     #endif

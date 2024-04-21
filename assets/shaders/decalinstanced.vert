@@ -41,6 +41,8 @@ vec2 getUVoffset(vec3 camera, vec3 instancePosition, mat4 instanceTransform)
 {
     vec3 fwd =      camera-instancePosition;        // vector towards camera
 
+//    normalize(camDir);
+//    vec4 fwd = instanceTransform * vec4(camDir, 1.0) - vec4(instancePosition,1.0);
     // angle in the horizontal plane (360 degrees)
     float angle = atan(fwd.z, fwd.x);
 

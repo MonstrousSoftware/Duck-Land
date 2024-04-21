@@ -144,7 +144,7 @@ public class Scenery implements Disposable {
             scenes.add(lodScenes[lod]);
         }
 
-        createSSBOforDecals(MAX_DECALS);
+        createSSBOforInstances(MAX_DECALS);
 
         // enable instancing for impostors
         makeInstancedDecals(decalInstance);
@@ -159,15 +159,15 @@ public class Scenery implements Disposable {
     public Array<Scene> getScenes(){
         // for the sake of debug options we rebuild this as needed
         scenes.clear();
-//        if(Settings.lodLevel == -1) {
-//            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-//                scenes.add(lodScenes[lod]);
-//            }
-//        }
-//        else if (Settings.lodLevel < Settings.LOD_LEVELS)
-//            scenes.add(lodScenes[Settings.lodLevel]);
-//
-//        scenes.add(lodScenes[Settings.LOD_LEVELS]);
+        if(Settings.lodLevel == -1) {
+            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
+                scenes.add(lodScenes[lod]);
+            }
+        }
+        else if (Settings.lodLevel < Settings.LOD_LEVELS)
+            scenes.add(lodScenes[Settings.lodLevel]);
+
+        //scenes.add(lodScenes[Settings.LOD_LEVELS]);
         return scenes;
     }
 
@@ -219,25 +219,25 @@ public class Scenery implements Disposable {
         }
         updateSSBOdata( allPositions );
 
-        // Select chunks that are in camera frustum
-        //
-        visibleChunks.clear();
-        for(SceneryChunk chunk : chunksInRange ) {
-            if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
-                visibleChunks.add(chunk);
-                chunk.lastSeen = timeCounter;
-            }
-        }
-
-
-        // Add index data for visible chunks
-        resetDecalIndices();
-        int numDecals = 0;
-        for(SceneryChunk chunk : visibleChunks ) {
-            numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
-        }
-        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
-        statistics[Settings.LOD_LEVELS].instanceCount = numDecals;
+//        // Select chunks that are in camera frustum
+//        //
+//        visibleChunks.clear();
+//        for(SceneryChunk chunk : chunksInRange ) {
+//            if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
+//                visibleChunks.add(chunk);
+//                chunk.lastSeen = timeCounter;
+//            }
+//        }
+//
+//
+//        // Add index data for visible chunks
+//        resetDecalIndices();
+//        int numDecals = 0;
+//        for(SceneryChunk chunk : visibleChunks ) {
+//            numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
+//        }
+//        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
+//        statistics[Settings.LOD_LEVELS].instanceCount = numDecals;
 
 
     }
@@ -248,9 +248,9 @@ public class Scenery implements Disposable {
         timeCounter++;
 
         // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
-        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
-            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
-            return;
+//        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
+//            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
+//            return;
 
         lastCameraChange = timeCounter;
         // remember current camera settings for next call
@@ -311,69 +311,64 @@ public class Scenery implements Disposable {
             if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
                 visibleChunks.add(chunk);
                 chunk.lastSeen = timeCounter;
-                chunk.setLodLevel(3);
             }
         }
 
 
 
-//        // Now get the instance data from all visible chunks
-//        //
+        // Now get the instance data from all visible chunks
+        //
 //        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
 //            positions[lod].clear();
-//
-//
-//        Integer centreKey = makeKey(centre.x, centre.y);
-//        indexListTop = 0;
-//        //int numDecals = 0;
-//        for(SceneryChunk chunk : visibleChunks ){
 
-//            int level;
-//
-//            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
-//                level = 0;
-//            else {
-//                float distance2 = cam.position.dst2(chunk.getWorldPosition());
-//                level = determineLODlevel(distance2);
-//                chunk.setLodLevel(level);
-//            }
-//
-////            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
-////                allocateInstances(cam, chunk.getPositions() );
-////            else
-//            if (level == Settings.LOD_LEVELS)
-//                numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
+
+        Integer centreKey = makeKey(centre.x, centre.y);
+        resetIndices();
+        for(SceneryChunk chunk : visibleChunks ){
+
+            int level;
+
+            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
+                level = 0;
+            else {
+                float distance2 = cam.position.dst2(chunk.getWorldPosition());
+                level = determineLODlevel(distance2);
+                chunk.setLodLevel(level);
+            }
+
+//            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+//                allocateInstances(cam, chunk.getPositions() );
 //            else
-//                positions[level].addAll( chunk.getPositions() );
-//        }
+            addIndices(level, chunk.ssboOffset, chunk.getPositions().size);
+        }
 
 
         // Update instance data for every LOD model and the impostor model
         //
-//        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
-//            updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
-//        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
+        for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+            updateInstancedIndices( lodScenes[lod].modelInstance, lod);    // instances for models
+        updateInstancedIndices(decalInstance, Settings.LOD_LEVELS );    // instances for decal
 
 
-        // Add index data for visible chunks
-
-        resetDecalIndices();
-        int numDecals = 0;
-        for(SceneryChunk chunk : visibleChunks ) {
-            numDecals = addDecalIndices(chunk.ssboOffset, chunk.getPositions().size);
-        }
-        updateInstancedDecals(decalInstance, numDecals);    // instances for decal
-        statistics[Settings.LOD_LEVELS].instanceCount = numDecals;
+//        // Add index data for visible chunks
+//
+//        resetIndices();
+//
+//        for(SceneryChunk chunk : visibleChunks ) {
+//            addIndices(3, chunk.ssboOffset, chunk.getPositions().size);
+//        }
+//        updateInstancedIndices(decalInstance, 3);    // instances for decal
+//        statistics[Settings.LOD_LEVELS].instanceCount = indexListCount[3];
 
 
         // Update the stats for the GUI
         //
-//        instanceCount = 0;
-//        for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
-//            statistics[lod].instanceCount = positions[lod].size;
-//            instanceCount += positions[lod].size;
-//        }
-//        if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
+        instanceCount = 0;
+        for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+            statistics[lod].instanceCount = indexListCount[lod];
+            instanceCount += indexListCount[lod];
+        }
+        if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
 
 
 //        if( chunks.size() > Settings.sceneryChunkCacheSize){
@@ -438,36 +433,38 @@ public class Scenery implements Disposable {
     private void makeInstanced( ModelInstance modelInstance ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
-
+        // create attribute for index into SSBO
+        mesh.enableInstancedRendering(false, MAX_INSTANCES,
+            new VertexAttribute(VertexAttributes.Usage.Generic, 1, "i_index", 0));
         // add matrix per instance
-        mesh.enableInstancedRendering(false, MAX_INSTANCES,      // pass maximum instance count
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3)   );
+//        mesh.enableInstancedRendering(false, MAX_INSTANCES,      // pass maximum instance count
+//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
+//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
+//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
+//            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3)   );
     }
 
-    private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
-
-        if(positions.size >= MAX_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
-
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
-
-        // fill instance data buffer
-        instanceData.clear();
-
-        for(Vector4 pos: positions) {
-
-            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
-            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
-            // transpose matrix for GLSL
-            //instanceData.put(instanceTransform.getValues());
-            instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
-        }
-        instanceData.limit( positions.size * 16 );  // amount of data in buffer
-        instanceData.position(0);      // rewind float buffer to start
-        mesh.setInstanceData(instanceData);
-    }
+//    private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
+//
+//        if(positions.size >= MAX_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
+//
+//        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+//
+//        // fill instance data buffer
+//        instanceData.clear();
+//
+//        for(Vector4 pos: positions) {
+//
+//            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
+//            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
+//            // transpose matrix for GLSL
+//            //instanceData.put(instanceTransform.getValues());
+//            instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
+//        }
+//        instanceData.limit( positions.size * 16 );  // amount of data in buffer
+//        instanceData.position(0);      // rewind float buffer to start
+//        mesh.setInstanceData(instanceData);
+//    }
 
 
     private void makeInstancedDecals( ModelInstance modelInstance ) {
@@ -507,9 +504,9 @@ public class Scenery implements Disposable {
 
 
 
-    private void createSSBOforDecals( int maxInstances ) {
+    private void createSSBOforInstances(int maxInstances ) {
         ssbo = Gdx.gl.glGenBuffer();
-        int sizeInBytes = maxInstances * 4 * 16; // 16 floats per instance
+        int sizeInBytes = maxInstances * 4 * 16; // 16 floats per instance, 4 bytes per float
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
         Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, null,
             GL31.GL_DYNAMIC_DRAW);
@@ -530,32 +527,33 @@ public class Scenery implements Disposable {
             // transpose matrix for GLSL
             instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
-        instanceData.limit( positions.size * 16 );
+        instanceData.limit( positions.size * 16 );  // 16 floats per instance
         instanceData.position(0);      // rewind float buffer to start
 
-        int sizeInBytes = positions.size  * 4 * 16;
+        // copy the instanceData FloatBuffer into the SSBO
+        int sizeInBytes = positions.size  * 16 * 4;
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
         Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, instanceData,
             GL31.GL_DYNAMIC_DRAW);
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, 0); // unbind
     }
 
-    private float [] indexList = new float[MAX_DECALS];          // even though we have integers, we can only pass as floats
-    private int indexListTop;
+    private float [][] indexList = new float[Settings.LOD_LEVELS+1][MAX_DECALS];          // even though we have integers, we can only pass as floats
+    private int[] indexListCount = new int[Settings.LOD_LEVELS+1];
 
-    private void resetDecalIndices(){
-        indexListTop = 0;
+    private void resetIndices(){
+        for(int i = 0; i <Settings.LOD_LEVELS+1; i++)
+            indexListCount[i] = 0;
     }
 
-    private int addDecalIndices(int start, int count) {
+    private void addIndices(int level, int start, int count) {
          for(int i = 0; i < count; i++){
-            indexList[indexListTop+i] = start+i;
+            indexList[level][indexListCount[level]+i] = start+i;
         }
-        indexListTop += count;
-        return indexListTop;
+        indexListCount[level] += count;
     }
 
-    private void updateInstancedDecals( ModelInstance modelInstance, int count ) {
+    private void updateInstancedIndices(ModelInstance modelInstance, int level ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
@@ -564,7 +562,7 @@ public class Scenery implements Disposable {
 //        for(int i = 0; i < positions.size; i++){
 //            indexList[i] = i;
 //        }
-        mesh.setInstanceData(indexList, 0, count);
+        mesh.setInstanceData(indexList[level], 0, indexListCount[level]);
 
     }
 
