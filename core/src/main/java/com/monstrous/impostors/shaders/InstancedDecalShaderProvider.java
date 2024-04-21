@@ -59,8 +59,8 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
 
             @Override
             public void init() {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                ShaderProgram.prependVertexCode = "#version 460 core\n"; // 300 es
+                ShaderProgram.prependFragmentCode = "#version 460 core\n";
 
                 program = new ShaderProgram( vertexShader, fragmentShader);
                 if (!program.isCompiled()) {
@@ -83,6 +83,12 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 camPos[1] = camera.position.y;
                 camPos[2] = camera.position.z;
                 program.setUniform3fv("u_camPos", camPos,0,3);
+
+                program.getUniformLocation("ssbo");
+
+                int ssboIndex = Gdx.gl30.glGetUniformBlockIndex(program.getHandle(),"ssbo");
+                Gdx.gl30.glUniformBlockBinding(program.getHandle(), ssboIndex, 0);    // binding
+
 
 //                context.setDepthTest(GL32.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);

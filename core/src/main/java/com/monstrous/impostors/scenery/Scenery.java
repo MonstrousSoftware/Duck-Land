@@ -34,8 +34,8 @@ import java.util.Map;
 public class Scenery implements Disposable {
     private static final int RANGE = 8;               // viewing range in chunks
 
-    private static final int MAX_INSTANCES = 10000;
-
+    private static final int MAX_INSTANCES = 1000;
+    private static final int MAX_DECALS = 5000;
 
     private final Terrain terrain;
     private final float separationDistance;
@@ -49,6 +49,7 @@ public class Scenery implements Disposable {
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
     private final float radius;
     private Array<Vector4>[] positions;
+    private Array<Vector4> allPositions;            // all visible positions regardless of LOD
     private final ImpostorBuilder builder;
     private final Texture impostorTexture;
     private final Vector2 regionSize;
@@ -61,6 +62,7 @@ public class Scenery implements Disposable {
     private final Array<SceneryChunk> chunksInRange;
     private final Array<SceneryChunk> visibleChunks;
     private FloatBuffer instanceData;   // temp buffer to transfer instance data
+    private int ssbo;
 
     public Scenery( Terrain terrain, float separationDistance ) {
         this.terrain = terrain;
@@ -74,6 +76,7 @@ public class Scenery implements Disposable {
         decalInstances = new Array<>();
         timeCounter = 0;
         lastCameraMove = 0;
+        allPositions = new Array<>();
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
             //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
@@ -116,6 +119,7 @@ public class Scenery implements Disposable {
         textureRegion0 = new TextureRegion(impostorTexture, 0, 0, width, height);
         textureRegion0.flip(false, true);
 
+
         int y = 0;
 
 
@@ -142,6 +146,8 @@ public class Scenery implements Disposable {
             scenes.add(lodScenes[lod]);
         }
 
+        createSSBOforDecals(MAX_DECALS);
+
         // enable instancing for impostors
         makeInstancedDecals(decalInstance);
         decalInstances.add(decalInstance);
@@ -153,13 +159,15 @@ public class Scenery implements Disposable {
     public Array<Scene> getScenes(){
         // for the sake of debug options we rebuild this as needed
         scenes.clear();
-        if(Settings.lodLevel == -1) {
-            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-                scenes.add(lodScenes[lod]);
-            }
-        }
-        else if (Settings.lodLevel < Settings.LOD_LEVELS)
-            scenes.add(lodScenes[Settings.lodLevel]);
+//        if(Settings.lodLevel == -1) {
+//            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
+//                scenes.add(lodScenes[lod]);
+//            }
+//        }
+//        else if (Settings.lodLevel < Settings.LOD_LEVELS)
+//            scenes.add(lodScenes[Settings.lodLevel]);
+//
+//        scenes.add(lodScenes[Settings.LOD_LEVELS]);
         return scenes;
     }
 
@@ -235,12 +243,22 @@ public class Scenery implements Disposable {
             }
         }
 
+        // Put data for all visible instances in the SSBO
+        allPositions.clear();
+        for(SceneryChunk chunk : visibleChunks ){
+            allPositions.addAll(chunk.getPositions());
+        }
+        updateSSBOdata( allPositions );
+
         // Now get the instance data from all visible chunks
         //
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
             positions[lod].clear();
 
+
         Integer centreKey = makeKey(centre.x, centre.y);
+        int offset = 0;
+        indexListTop = 0;
         for(SceneryChunk chunk : visibleChunks ){
 
             int level;
@@ -253,10 +271,14 @@ public class Scenery implements Disposable {
                 chunk.setLodLevel(level);
             }
 
-            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
-                allocateInstances(cam, chunk.getPositions() );
+//            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+//                allocateInstances(cam, chunk.getPositions() );
+//            else
+                if (level == Settings.LOD_LEVELS)
+                addDecalIndices(offset, chunk.getPositions().size);
             else
                 positions[level].addAll( chunk.getPositions() );
+            offset += chunk.getPositions().size;
         }
 
 
@@ -264,7 +286,8 @@ public class Scenery implements Disposable {
         //
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
             updateInstanced(lodScenes[lod].modelInstance, positions[lod]);
-        updateInstancedDecals(decalInstance, positions[Settings.LOD_LEVELS]);    // instances for decal
+        updateInstancedDecals(decalInstance, offset);    // instances for decal
+
 
         // Update the stats for the GUI
         //
@@ -355,7 +378,7 @@ public class Scenery implements Disposable {
 
         // fill instance data buffer
         instanceData.clear();
-        Matrix4 instanceTransform = new Matrix4();
+
         for(Vector4 pos: positions) {
 
             instanceTransform.setToRotationRad(Vector3.Y, pos.w);
@@ -373,27 +396,93 @@ public class Scenery implements Disposable {
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
         // add vector4 per instance containing position and Y rotation
+        // create attribute for index into SSBO
         mesh.enableInstancedRendering(false, MAX_INSTANCES,
-            new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
+            new VertexAttribute(VertexAttributes.Usage.Generic, 1, "i_index", 0));
     }
 
     private float[] tmpFloat4 = { 1, 2, 3, 4 };
+    private boolean decalsSet = false;
 
-    private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
+//    private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
+//
+//        if(!decalsSet) {
+//            fillInstancedDecalsData(modelInstance, positions);
+//            decalsSet = true;
+//        }
+//
+////        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+//
+//        instanceData.clear();
+//        for(Vector4 pos: positions) {
+//            tmpFloat4[0] = pos.x;
+//            tmpFloat4[1] = pos.y;
+//            tmpFloat4[2] = pos.z;
+//            tmpFloat4[3] = pos.w;
+//            instanceData.put( tmpFloat4 );
+//        }
+//        instanceData.limit( positions.size * 4 );
+//        instanceData.position(0);      // rewind float buffer to start
+//        mesh.setInstanceData(instanceData);
+//    }
 
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+
+
+
+    private void createSSBOforDecals( int maxInstances ) {
+        ssbo = Gdx.gl.glGenBuffer();
+        int sizeInBytes = maxInstances * 4 * 16; // 16 floats per instance
+        Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
+        Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, null,
+            GL31.GL_DYNAMIC_DRAW);
+        Gdx.gl30.glBindBufferBase(GL31.GL_SHADER_STORAGE_BUFFER, 0, ssbo);  // allocate to binding 0
+        Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, 0); // unbind
+    }
+
+    private Matrix4 instanceTransform = new Matrix4();
+
+
+    private void updateSSBOdata( Array<Vector4> positions ) {
 
         instanceData.clear();
         for(Vector4 pos: positions) {
-            tmpFloat4[0] = pos.x;
-            tmpFloat4[1] = pos.y;
-            tmpFloat4[2] = pos.z;
-            tmpFloat4[3] = pos.w;
-            instanceData.put( tmpFloat4 );
+
+            instanceTransform.setToRotationRad(Vector3.Y, pos.w);
+            instanceTransform.setTranslation(pos.x, pos.y, pos.z);
+            // transpose matrix for GLSL
+            instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
         instanceData.limit( positions.size * 4 );
         instanceData.position(0);      // rewind float buffer to start
-        mesh.setInstanceData(instanceData);
+
+        int sizeInBytes = positions.size * 4 * 4;
+        Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
+        Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, instanceData,
+            GL31.GL_DYNAMIC_DRAW);
+        Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, 0); // unbind
+    }
+
+    private float [] indexList = new float[MAX_DECALS];          // even though we have integers, we can only pass as floats
+    private int indexListTop;
+
+    private void addDecalIndices(int start, int count) {
+         for(int i = 0; i < count; i++){
+            indexList[indexListTop+i] = start+i;
+        }
+        indexListTop += count;
+    }
+
+    private void updateInstancedDecals( ModelInstance modelInstance, int count ) {
+
+        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+
+        // create index list and bind it to mesh
+//        indexList = new float[positions.size];          // even though we have integers, we can only pass as floats
+//        for(int i = 0; i < positions.size; i++){
+//            indexList[i] = i;
+//        }
+        mesh.setInstanceData(indexList, 0, indexListTop);
+
     }
 
 
