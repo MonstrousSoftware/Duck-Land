@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.monstrous.impostors.PoissonDistribution;
+import com.monstrous.impostors.PoissonDiskDistribution;
 import com.monstrous.impostors.terrain.Terrain;
 
 public class SceneryChunk implements Disposable {
@@ -32,7 +32,7 @@ public class SceneryChunk implements Disposable {
         // generate a random poisson distribution of instances over a rectangular area, meaning instances are never too close together
         MathUtils.random.setSeed(cx * 345 + cz * 56700);         // fix the random distribution to always be identical per chunk
         Rectangle area = new Rectangle(1, 1, CHUNK_SIZE, CHUNK_SIZE);
-        Array<Vector2> points = PoissonDistribution.generatePoissonDistribution(separationDistance, area);
+        Array<Vector2> points = PoissonDiskDistribution.generatePoissonDistribution(separationDistance, area);
 
         //instanceCount = points.size;
 

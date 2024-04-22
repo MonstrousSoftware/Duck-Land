@@ -13,7 +13,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
-public class PoissonDistribution {
+public class PoissonDiskDistribution {
 
     public static final int MAX_TRIES = 20;
 

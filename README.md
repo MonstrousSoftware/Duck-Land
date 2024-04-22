@@ -52,7 +52,7 @@ To do/ideas:
 - DONEUsing the chunks we could polulate an infinite amount (like the terrain chunks)
 - DONE: LOD level could be determined per chunk for faster allocation
 - Could use an indirect buffer to index the instance transforms, to exchange less data per frame (1 integer instead of 16 floats).  Because the locations are static, they are just allocated
-to different LOD models over time.
+to different LOD models over time.  ==> Have tried this using an SSBO, but performance was worse.
 
 - we could perhaps avoid the copying of the FloatBuffer performed by setInstanceData() if we get hold of the buffer via InstanceData.getBuffer() (but Mesh.instances is package private).
 - can we avoid wasting some much memory on a temp FloatBuffer?

@@ -76,7 +76,6 @@ public class Scenery implements Disposable {
         lastCameraMove = 0;
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/birch-lod" + lod + ".glb"));
             SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
