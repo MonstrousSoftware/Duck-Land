@@ -64,7 +64,7 @@ public class CameraController extends InputAdapter {
             eyeHeight += 30f*deltaTime;
         }
         if (keys.containsKey(downKey)) {
-            if(eyeHeight > 10f)
+            if(eyeHeight > 10f || Settings.singleInstance)
                 eyeHeight -= 30f*deltaTime;
         }
 

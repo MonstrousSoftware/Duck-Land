@@ -32,10 +32,10 @@ import java.util.Map;
 
 
 public class Scenery implements Disposable {
-    private static final int RANGE = 8;               // viewing range in chunks
+    private static final int RANGE = 25;               // viewing range in chunks
 
-    private static final int MAX_INSTANCES = 10000;
-
+    private static final int MAX_MODEL_INSTANCES =  500;
+    private static final int MAX_DECAL_INSTANCES = 25000;
 
     private final Terrain terrain;
     private final float separationDistance;
@@ -46,6 +46,7 @@ public class Scenery implements Disposable {
     int lastCameraChange;                           // time stamp of last camera change
     int lastCameraMove;                             // time stamp of last camera move (to new chunk)
     private final Array<Scene> scenes;
+    private final Scene groundPlane;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
     private final float radius;
     private Array<Vector4>[] positions;
@@ -75,8 +76,11 @@ public class Scenery implements Disposable {
         timeCounter = 0;
         lastCameraMove = 0;
 
+        SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
+        groundPlane = new Scene(sceneAsset.scene);
+
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
+            sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
 
@@ -84,7 +88,8 @@ public class Scenery implements Disposable {
         lodScenes[0].modelInstance.calculateBoundingBox(modelBoundingBox);          // get dimensions of model
         Vector3 dimensions = new Vector3();
         modelBoundingBox.getDimensions(dimensions);
-        radius = dimensions.len() / 2f;     // determine model radius for frustum clipping
+        radius =  dimensions.len() / 2f;     // determine model radius for frustum clipping
+
 
 
         positions = new Array[Settings.LOD_LEVELS+1];
@@ -93,7 +98,8 @@ public class Scenery implements Disposable {
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
         // we are dimensioning it for a worst case, which means we probably waste a lot of memory here (e.g. 32Mb)
-        instanceData = BufferUtils.newFloatBuffer(MAX_INSTANCES * 16);   // 16 floats for the matrix
+        int bufferSize = Math.max(MAX_MODEL_INSTANCES * 16, MAX_DECAL_INSTANCES * 4);
+        instanceData = BufferUtils.newFloatBuffer(bufferSize);   // 16 floats for the matrix, 4 floats per impostor
 
         // Create impostors
         //
@@ -137,12 +143,14 @@ public class Scenery implements Disposable {
         }
 
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-            makeInstanced(lodScenes[lod].modelInstance);
+            float estimate = 2f*(float)Math.PI*(float)Math.pow((Scenery.RANGE),2f);// * (Settings.cameraFOV / 360f);
+            Gdx.app.log("level "+lod, "chunks: "+estimate);
+            makeInstanced(lodScenes[lod].modelInstance, MAX_MODEL_INSTANCES);       // could make an estimate per LOD level here
             scenes.add(lodScenes[lod]);
         }
 
         // enable instancing for impostors
-        makeInstancedDecals(decalInstance);
+        makeInstancedDecals(decalInstance, MAX_DECAL_INSTANCES);
         decalInstances.add(decalInstance);
 
         Settings.lodLevel = -1;     // show all LOD levels and impostors
@@ -154,11 +162,16 @@ public class Scenery implements Disposable {
         scenes.clear();
         if(Settings.lodLevel == -1) {
             for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-                scenes.add(lodScenes[lod]);
+                if(positions[lod].size > 0)
+                    scenes.add(lodScenes[lod]);
             }
         }
-        else if (Settings.lodLevel < Settings.LOD_LEVELS)
-            scenes.add(lodScenes[Settings.lodLevel]);
+        else if (Settings.lodLevel < Settings.LOD_LEVELS) {
+            if(positions[Settings.lodLevel].size > 0)
+                scenes.add(lodScenes[Settings.lodLevel]);
+        }
+        if(Settings.singleInstance)
+            scenes.add(groundPlane);
         return scenes;
     }
 
@@ -178,7 +191,9 @@ public class Scenery implements Disposable {
         timeCounter++;
 
         // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
-        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
+        if(!Settings.singleInstance &&
+            !forceUpdate &&
+            cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
             && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
             return;
 
@@ -207,7 +222,7 @@ public class Scenery implements Disposable {
 
                     // quickly discard chunks outside a circular range
                     v.set(cx, cz);
-                    if (v.dst2(centre) > RANGE * RANGE)
+                    if (v.dst2(centre) >= RANGE * RANGE)
                         continue;
 
                     Integer key = makeKey(cx, cz);
@@ -234,6 +249,10 @@ public class Scenery implements Disposable {
             }
         }
 
+//        Gdx.app.log("chunks in range", ""+chunksInRange.size );
+//        Gdx.app.log("chunks visible", ""+visibleChunks.size );
+
+
         // Now get the instance data from all visible chunks
         //
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
@@ -258,6 +277,18 @@ public class Scenery implements Disposable {
                 positions[level].addAll( chunk.getPositions() );
         }
 
+        if(Settings.singleInstance){
+            // if we're in single instance mode, forget all of the above
+            // clear all positions, except one for the current LOD level
+            for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++){
+                positions[lod].clear();
+            }
+            if(Settings.lodLevel < 0)   // don't allow multiple LOD levels
+                Settings.lodLevel = 0;
+            Vector4 singlePos = new Vector4(0,0,0,timeCounter * 0.0005f);       // slowly rotate
+            positions[Settings.lodLevel].add(singlePos);
+        }
+
 
         // Update instance data for every LOD model and the impostor model
         //
@@ -272,7 +303,7 @@ public class Scenery implements Disposable {
             statistics[lod].instanceCount = positions[lod].size;
             instanceCount += positions[lod].size;
         }
-        if (instanceCount > MAX_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_INSTANCES);
+        if (instanceCount > MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES);
 
 
         if( chunks.size() > Settings.sceneryChunkCacheSize){
@@ -307,7 +338,7 @@ public class Scenery implements Disposable {
         for(Vector4 position : positionsFromChunk ){
 
             instancePosition.set( position.x, position.y, position.z );
-            if(cam.frustum.sphereInFrustum(instancePosition, radius)) {
+            if(cam.frustum.sphereInFrustum(instancePosition, 1.5f*radius)) {        // some margin to prevent popping
                 float distance2 = cam.position.dst2(instancePosition);
                 int level = determineLODlevel(distance2);
                 positions[level].add(position);
@@ -334,12 +365,12 @@ public class Scenery implements Disposable {
 
 
 
-    private void makeInstanced( ModelInstance modelInstance ) {
+    private void makeInstanced( ModelInstance modelInstance, int maxInstances ) {
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
         // add matrix per instance
-        mesh.enableInstancedRendering(false, MAX_INSTANCES,      // pass maximum instance count
+        mesh.enableInstancedRendering(false, maxInstances,      // pass maximum instance count
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
@@ -348,7 +379,7 @@ public class Scenery implements Disposable {
 
     private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
 
-        if(positions.size >= MAX_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
+        if(positions.size >= MAX_MODEL_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
@@ -368,17 +399,18 @@ public class Scenery implements Disposable {
     }
 
 
-    private void makeInstancedDecals( ModelInstance modelInstance ) {
+    private void makeInstancedDecals( ModelInstance modelInstance, int maxInstances ) {
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 
         // add vector4 per instance containing position and Y rotation
-        mesh.enableInstancedRendering(false, MAX_INSTANCES,
+        mesh.enableInstancedRendering(false, maxInstances,
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_offset", 0));
     }
 
     private float[] tmpFloat4 = { 1, 2, 3, 4 };
 
     private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
+        if(positions.size >= MAX_DECAL_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
 
         Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
 

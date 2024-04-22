@@ -32,9 +32,9 @@ public class Impostor {
         float height = boundingBox.getHeight();
 
         // height seems a bit too low
-        // todo
-        halfWidth *= 1.2f;
-        height *= 1.2f;
+
+//        halfWidth *= 1.2f;
+//        height *= 1.2f;
 
 
 

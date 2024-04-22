@@ -76,7 +76,7 @@ public class GameScreen extends ScreenAdapter {
         sceneManager = new SceneManager( new InstancedPBRShaderProvider(), new InstancedPBRDepthShaderProvider() );
 
         // setup camera
-        camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera = new PerspectiveCamera(Settings.cameraFOV, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 40f;
         camera.near = 1f;
         camera.far = 8192f;
@@ -137,7 +137,7 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain, 30);
+        scenery = new Scenery(terrain, 20);
         sceneryDebug = new SceneryDebug( scenery );
 
 
@@ -168,6 +168,15 @@ public class GameScreen extends ScreenAdapter {
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
         if(Gdx.input.isKeyJustPressed(Input.Keys.P))
             Settings.debugSceneryChunkAllocation = !Settings.debugSceneryChunkAllocation;
+        if(Gdx.input.isKeyJustPressed(Input.Keys.M)) {
+            Settings.singleInstance = !Settings.singleInstance;
+            if(Settings.singleInstance) {
+                camera.position.set(0, 20, 50);
+                camera.lookAt(Vector3.Zero);
+            }
+            else
+                Settings.lodLevel = -1;
+        }
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
             Settings.lod1Distance *= 1.1f;
@@ -211,8 +220,10 @@ public class GameScreen extends ScreenAdapter {
         sceneManager.getRenderableProviders().clear();
 
         // terrain chunks are taken directly from the Terrain class
-        for(Scene scene : terrain.getScenes())
-            sceneManager.addScene(scene, false);
+        if(!Settings.singleInstance) {
+            for (Scene scene : terrain.getScenes())
+                sceneManager.addScene(scene, false);
+        }
 
         for(Scene scene : scenery.getScenes())
             sceneManager.addScene(scene, false);

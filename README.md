@@ -25,9 +25,10 @@ Movement Controls:
 
 Demo Options:
 - TAB to cycle through LOD0, LOD1, LOD2, Impostors and all
-- T to show terrain chunks
-- P to toggle scenery chunks (colour indicated LOD level)
+- T to show terrain chunks overlay
+- P to toggle scenery chunks overlay (colour indicated LOD level)
 - Z, X to change LOD distances
+- M to toggle single instance view
 
 
 

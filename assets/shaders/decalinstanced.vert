@@ -48,7 +48,7 @@ vec2 getUVoffset(vec3 camera, vec4 instance)
     v_offset = clamp(v_offset, 0.0, floor(1.0/u_step.y)-1.0);
     v_offset *= u_step.y;
 
-    return vec2(u_offset, 0.000001*v_offset);
+    return vec2(u_offset, v_offset);
 }
 
 

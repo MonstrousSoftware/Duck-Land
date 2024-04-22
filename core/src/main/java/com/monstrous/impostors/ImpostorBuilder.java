@@ -43,7 +43,7 @@ public class ImpostorBuilder {
         sceneManager = new SceneManager();
 
         // setup camera
-        camera = new PerspectiveCamera(60f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera = new PerspectiveCamera(Settings.cameraFOV, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 100f;  // will be modified later
         camera.near = 0.01f;
         camera.far = 400f;
@@ -150,7 +150,7 @@ public class ImpostorBuilder {
 
         int texHeight = clipHeight; //texWidth * clipHeight/clipWidth;  // keep aspect ratio
         //int texHeight = (int)(textureSize /4f);
-        regionSize.set(texWidth, texHeight);        // export region size to caller
+        regionSize.set(texWidth, texHeight-1);        // export region size to caller
         Gdx.app.log("decal size", "width: " +texWidth + " height: " + texHeight);
 
         int elevations = textureSize / texHeight;
