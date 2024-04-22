@@ -140,7 +140,7 @@ public class GameScreen extends ScreenAdapter {
         camera.up.set(Vector3.Y);
         camController.update( 0.1f );
         camera.update(true);
-        scenery = new Scenery(terrain, 30, camera);
+        scenery = new Scenery(terrain, 20, camera);
         sceneryDebug = new SceneryDebug( scenery );
 
 
@@ -200,7 +200,7 @@ public class GameScreen extends ScreenAdapter {
         camera.up.set(Vector3.Y);
 //        camera.lookAt(Vector3.Zero);
         camController.update( deltaTime );
-//        camera.update(true);
+        camera.update(true);
 
         terrain.update( camera );
         scenery.update( camera, !Settings.skipChecksWhenCameraStill );

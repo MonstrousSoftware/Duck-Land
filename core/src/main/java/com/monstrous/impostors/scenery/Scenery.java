@@ -32,10 +32,10 @@ import java.util.Map;
 
 
 public class Scenery implements Disposable {
-    private static final int RANGE = 8;               // viewing range in chunks
+    private static final int RANGE = 32;               // viewing range in chunks
 
-    private static final int MAX_INSTANCES = 5000;
-    private static final int MAX_DECALS = 50000;
+    private static final int MAX_INSTANCES = 150000;
+    private static final int MAX_DECALS = 150000;
 
     private final Terrain terrain;
     private final float separationDistance;
@@ -248,9 +248,12 @@ public class Scenery implements Disposable {
         timeCounter++;
 
         // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
-//        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
-//            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
-//            return;
+        if(!forceUpdate && cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
+            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
+            return;
+
+        if(timeCounter > 5)
+            return;
 
         lastCameraChange = timeCounter;
         // remember current camera settings for next call
@@ -336,10 +339,10 @@ public class Scenery implements Disposable {
                 chunk.setLodLevel(level);
             }
 
-//            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
-//                allocateInstances(cam, chunk.getPositions() );
-//            else
-            addIndices(level, chunk.ssboOffset, chunk.getPositions().size);
+            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+                allocateIndices(cam, chunk );
+            else
+                addIndices(level, chunk.ssboOffset, chunk.getPositions().size);
         }
 
 
@@ -407,7 +410,26 @@ public class Scenery implements Disposable {
                 float distance2 = cam.position.dst2(instancePosition);
                 int level = determineLODlevel(distance2);
                 positions[level].add(position);
+
             }
+        }
+    }
+
+    // allocate instanced from this list on individual basis to LOD level
+    // also perform individual frustum clipping
+    //
+    private void allocateIndices( Camera cam, SceneryChunk chunk ){
+        int ssboOffset = chunk.ssboOffset;
+        Array<Vector4> positionsFromChunk = chunk.getPositions();
+        for(Vector4 position : positionsFromChunk ){
+
+            instancePosition.set( position.x, position.y, position.z );
+            if(cam.frustum.sphereInFrustum(instancePosition, radius)) {
+                float distance2 = cam.position.dst2(instancePosition);
+                int level = determineLODlevel(distance2);
+                addIndices(level, ssboOffset, 1);
+            }
+            ssboOffset++;
         }
     }
 
@@ -509,7 +531,7 @@ public class Scenery implements Disposable {
         int sizeInBytes = maxInstances * 4 * 16; // 16 floats per instance, 4 bytes per float
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, ssbo);
         Gdx.gl.glBufferData(GL31.GL_SHADER_STORAGE_BUFFER, sizeInBytes, null,
-            GL31.GL_DYNAMIC_DRAW);
+            GL31.GL_STATIC_DRAW);
         Gdx.gl30.glBindBufferBase(GL31.GL_SHADER_STORAGE_BUFFER, 0, ssbo);  // allocate to binding 0
         Gdx.gl.glBindBuffer(GL31.GL_SHADER_STORAGE_BUFFER, 0); // unbind
     }

@@ -22,13 +22,14 @@
 
 // MS
 #if defined(instanced)
-layout(std140) readonly buffer ssbo {
+layout(std430, binding = 0) readonly buffer ssbo {
     mat4 instanceData[];  // world transform
 };
 
 
 
     attribute float i_index;
+
     //attribute mat4 i_worldTrans;
 #endif // instanced
 
@@ -320,8 +321,9 @@ void main() {
     // MS
     vec3 normalVec = a_normal;
     #if defined(instanced)
-        int index = int(i_index);
-        mat4 i_worldTrans = instanceData[index];
+        const int index = int(i_index);
+        const mat4 i_worldTrans = instanceData[index];        // for some reason this is VERY SLOW but only when using i_index as index
+        //mat4 i_worldTrans = instanceData[gl_InstanceID];
         pos *= i_worldTrans;
         normalVec = a_normal * transpose(inverse(mat3(i_worldTrans)));
     #endif

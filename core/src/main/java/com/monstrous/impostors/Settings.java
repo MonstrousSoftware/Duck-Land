@@ -8,7 +8,7 @@ public class Settings {
     public static int lodLevel = 3;
 
     public static boolean dynamicLODAdjustment = false;
-    public static float lod1Distance = 64f; //91f; //80f;
+    public static float lod1Distance = 128f; //91f; //80f;
     public static float lod2Distance = 2*lod1Distance;
     public static float impostorDistance = 2*lod2Distance;
 
@@ -28,7 +28,7 @@ public class Settings {
     static public boolean   debugSceneryChunkAllocation = false;
     static public int       sceneryChunkCacheSize = 20000;
 
-    static public boolean   skipChecksWhenCameraStill = false;       // don't recalculate when camera doesn't move, set to false when tuning for performance
+    static public boolean   skipChecksWhenCameraStill = true;       // don't recalculate when camera doesn't move, set to false when tuning for performance
 
 
     static public boolean   invertLook = false;
