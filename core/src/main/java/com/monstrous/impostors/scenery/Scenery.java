@@ -70,8 +70,7 @@ public class Scenery implements Disposable {
         Vector3 dimensions = new Vector3();
         modelBoundingBox.getDimensions(dimensions);
         radius =  dimensions.len() / 2f;     // determine model radius for frustum clipping
-        modelCentre = new Vector3();
-        modelBoundingBox.getCenter(modelCentre);        // offset from model origin to model centre (origin should be at floor level)
+        modelCentre = modelBoundingBox.getCenter(new Vector3());        // offset from model origin to model centre (origin should be at floor level)
 
 
         positions = new Array[Settings.LOD_LEVELS+1];
@@ -79,7 +78,7 @@ public class Scenery implements Disposable {
             positions[lod] = new Array<>();
 
         // Create offset FloatBuffer that will contain instance data to pass to shader
-        // we are dimensioning it for a worst case, which means we probably waste a lot of memory here (e.g. 32Mb)
+        // we are dimensioning it for the worst case, which means we probably waste a lot of memory here
         int bufferSize = Math.max(MAX_MODEL_INSTANCES * 16, MAX_DECAL_INSTANCES * 4);
         instanceData = BufferUtils.newFloatBuffer(bufferSize);   // 16 floats for the matrix, 4 floats per impostor
 
@@ -103,10 +102,6 @@ public class Scenery implements Disposable {
         textureRegion0 = new TextureRegion(impostorTexture, 0, 0, width, height);
         textureRegion0.flip(false, true);
 
-        int y = 0;
-
-
-
         // create decal instance
         Model model = Impostor.createImposterModel(textureRegion0, lodScenes[0].modelInstance);
         decalInstance = new ModelInstance(model, 0, 0, 0);
@@ -125,7 +120,7 @@ public class Scenery implements Disposable {
         }
 
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-            float estimate = 2f*(float)Math.PI*(float)Math.pow((SceneryChunks.RANGE),2f);// * (Settings.cameraFOV / 360f);
+            float estimate = (float)Math.PI*(float)Math.pow((SceneryChunks.RANGE),2f);// * (Settings.cameraFOV / 360f);
             Gdx.app.log("level "+lod, "chunks: "+estimate);
             makeInstanced(lodScenes[lod].modelInstance, MAX_MODEL_INSTANCES);       // could make an estimate per LOD level here
             scenes.add(lodScenes[lod]);
@@ -160,11 +155,6 @@ public class Scenery implements Disposable {
         return decalInstances;
     }
 
-
-    private GridPoint2 centre = new GridPoint2();
-    private GridPoint2 v = new GridPoint2();
-    private GridPoint2 prevCentre = new GridPoint2(Integer.MAX_VALUE,Integer.MAX_VALUE);
-    private PerspectiveCamera prevCam = new PerspectiveCamera();
     private int timeCounter;
 
     public void update(PerspectiveCamera cam, boolean forceUpdate){
@@ -179,6 +169,7 @@ public class Scenery implements Disposable {
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
             positions[lod].clear();
 
+
         float diagonalDistance = 0.707f * SceneryChunk.CHUNK_SIZE;        // subtract distance from corner to centre of chunk in case the camera is in corner of chunk (0.5*sqrt(2))
 
         for(SceneryChunk chunk : visibleChunks ){
@@ -186,7 +177,7 @@ public class Scenery implements Disposable {
             int level = determineLODlevel(chunk.distance - diagonalDistance);
             chunk.setLodLevel(level);
 
-            if(level == 0)      // for chunks at LOD0 level, go to individual instance level
+            if(level <= 2)      // for chunks at LOD0 level (high poly count), test at individual instance level
                 allocateInstances(cam, chunk.getPositions() );
             else
                 positions[level].addAll( chunk.getPositions() );
@@ -244,15 +235,11 @@ public class Scenery implements Disposable {
     private int determineLODlevel( float distance ){
         // allocate this instance to one of the LOD levels depending on the distance
 
-        if (distance >= Settings.impostorDistance   )        // optimized: most common case first
-            return 3;
-        else if ( distance >= Settings.lod2Distance  )
-            return 2;
-        else if (distance >= Settings.lod1Distance   )
-            return 1;
-        else
-            return 0;
-        // todo : this hard codes the LOD levels to 3
+        for(int lod = Settings.LOD_LEVELS-1; lod >= 0; lod--) {
+            if (distance >= Settings.lodDistances[lod]   )        // optimized: most common case first
+                return lod+1;
+        }
+        return 0;       // LOD level 0, highest poly count
     }
 
 

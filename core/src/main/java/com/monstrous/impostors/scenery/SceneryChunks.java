@@ -34,7 +34,7 @@ import java.util.Map;
 
 
 public class SceneryChunks implements Disposable {
-    public static final int RANGE = 25;               // viewing range in chunks
+    public static final int RANGE = 35;               // viewing range in chunks
 
     private final Terrain terrain;
     private final float separationDistance;
@@ -88,6 +88,7 @@ public class SceneryChunks implements Disposable {
 
     public void update(PerspectiveCamera cam, boolean forceUpdate){
         timeCounter++;
+
 
         // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
         if(!Settings.singleInstance &&
@@ -156,8 +157,11 @@ public class SceneryChunks implements Disposable {
         }
         visibleChunks.sort( comparator );   // sort closest chunk first
 
-        //        Gdx.app.log("chunks in range", ""+chunksInRange.size );
-        //        Gdx.app.log("chunks visible", ""+visibleChunks.size );
+//        float estimatedChunksInRange = MathUtils.ceil(MathUtils.PI * (float)Math.pow(RANGE, 2.0));
+//        float estimatedChunksInView = 1.7f * estimatedChunksInRange * cam.fieldOfView / 360f;
+//
+//                Gdx.app.log("chunks in range", ""+chunksInRange.size+" estimated: "+ estimatedChunksInRange);
+//                Gdx.app.log("chunks visible", ""+visibleChunks.size+" estimated: "+ estimatedChunksInView );
         reaper();
 
 

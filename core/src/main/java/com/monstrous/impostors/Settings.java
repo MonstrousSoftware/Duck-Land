@@ -8,9 +8,11 @@ public class Settings {
     public static int       lodLevel = 3;
 
     public static boolean   dynamicLODAdjustment = false;
-    public static float     lod1Distance = 60f;
-    public static float     lod2Distance = 2*lod1Distance;
-    public static float     impostorDistance = 2*lod2Distance;
+    private static float     lod1Distance = 60f;
+    public static float[]   lodDistances = { lod1Distance, 2f*lod1Distance, 4f*lod1Distance };  // distance for LOD1, LOD2, Impostors
+//
+//    public static float     lod2Distance = 2*lod1Distance;
+//    public static float     impostorDistance = 2*lod2Distance;
 
     public static boolean   decalsDebug = false;       // highlight decals with random background colour
 
@@ -31,7 +33,7 @@ public class Settings {
     static public boolean   skipChecksWhenCameraStill = true;       // don't recalculate when camera doesn't move, set to false when tuning for performance
 
 
-    static public float     cameraFOV = 90f;
+    static public float     cameraFOV = 45f;
 
     static public boolean   invertLook = false;
 

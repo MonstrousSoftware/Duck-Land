@@ -130,7 +130,7 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain, 20);
+        scenery = new Scenery(terrain, 30);
         sceneryDebug = new SceneryDebug( scenery );
 
         SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
@@ -139,12 +139,6 @@ public class GameScreen extends ScreenAdapter {
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
     }
 
-
-
-//    private Vector3 forward = new Vector3();
-//    private Vector3 right = new Vector3();
-//    private Vector3 up = new Vector3();
-//    private Quaternion q = new Quaternion();
 
     @Override
     public void render(float deltaTime) {
@@ -174,18 +168,16 @@ public class GameScreen extends ScreenAdapter {
         }
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
-            Settings.lod1Distance *= 1.1f;
-            Settings.lod2Distance = 2*Settings.lod1Distance;
-            Settings.impostorDistance = 2*Settings.lod2Distance;
+            for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+                Settings.lodDistances[lod] = 1.1f * Settings.lodDistances[lod];
             Settings.dynamicLODAdjustment = false;
-            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lod1Distance);
+            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
             scenery.update( camera, true );
         }
         if(Gdx.input.isKeyJustPressed(Input.Keys.X)) {
-            Settings.lod1Distance *= 0.9f;
-            Settings.lod2Distance = 2*Settings.lod1Distance;
-            Settings.impostorDistance = 2*Settings.lod2Distance;
-            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lod1Distance);
+            for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+                Settings.lodDistances[lod] = 0.9f * Settings.lodDistances[lod];
+            Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
             Settings.dynamicLODAdjustment = false;
             scenery.update( camera, true );
         }
@@ -199,9 +191,7 @@ public class GameScreen extends ScreenAdapter {
 //        camera.position.y = .3f*cameraDistance;
 
         camera.up.set(Vector3.Y);
-//        camera.lookAt(Vector3.Zero);
         camController.update( deltaTime );
-//        camera.update(true);
 
         terrain.update( camera );
         scenery.update( camera, !Settings.skipChecksWhenCameraStill );
@@ -266,11 +256,10 @@ public class GameScreen extends ScreenAdapter {
 
             if(frameRate < targetFrameRate ){
                 // to improve performance, make LOD distances smaller
-                Settings.lod1Distance *= 0.7f;
-                Settings.lod2Distance = 2*Settings.lod1Distance;
-                Settings.impostorDistance = 2*Settings.lod2Distance;
+                for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
+                    Settings.lodDistances[lod] = 0.7f * Settings.lodDistances[lod];
 
-                Gdx.app.log("Frame rate too low, increasing LOD1 distance to:", ""+Settings.lod1Distance);
+                Gdx.app.log("Frame rate too low, increasing LOD1 distance to:", ""+Settings.lodDistances[0]);
             }
             else {
                 if(sampleTime < 10)
