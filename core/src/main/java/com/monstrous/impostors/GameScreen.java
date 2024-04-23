@@ -18,6 +18,7 @@ import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
 import com.monstrous.impostors.terrain.TerrainDebug;
+import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
@@ -31,6 +32,7 @@ public class GameScreen extends ScreenAdapter {
     private static final int SHADOW_MAP_SIZE = 4096;
 
     private SceneManager sceneManager;
+    private Scene groundPlane;
     private PerspectiveCamera camera;
     private Cubemap diffuseCubemap;
     private Cubemap environmentCubemap;
@@ -131,6 +133,8 @@ public class GameScreen extends ScreenAdapter {
         scenery = new Scenery(terrain, 20);
         sceneryDebug = new SceneryDebug( scenery );
 
+        SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
+        groundPlane = new Scene(sceneAsset.scene);
 
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
     }
@@ -214,8 +218,11 @@ public class GameScreen extends ScreenAdapter {
         if(!Settings.singleInstance) {
             for (Scene scene : terrain.getScenes())
                 sceneManager.addScene(scene, false);
+        } else {
+            sceneManager.addScene(groundPlane, false);
         }
 
+        // add scenery
         for(Scene scene : scenery.getScenes())
             sceneManager.addScene(scene, false);
 

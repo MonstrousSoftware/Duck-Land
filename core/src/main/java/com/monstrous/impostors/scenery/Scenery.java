@@ -38,7 +38,6 @@ public class Scenery implements Disposable {
     public Statistic[] statistics;
     public int instanceCount = 1;
     private final Array<Scene> scenes;
-    private final Scene groundPlane;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
     private final float radius;
     private Array<Vector4>[] positions;
@@ -60,11 +59,8 @@ public class Scenery implements Disposable {
         scenes = new Array<>();
         decalInstances = new Array<>();
 
-        SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
-        groundPlane = new Scene(sceneAsset.scene);
-
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
+            SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
 
@@ -73,7 +69,6 @@ public class Scenery implements Disposable {
         Vector3 dimensions = new Vector3();
         modelBoundingBox.getDimensions(dimensions);
         radius =  dimensions.len() / 2f;     // determine model radius for frustum clipping
-
 
 
         positions = new Array[Settings.LOD_LEVELS+1];
@@ -154,8 +149,6 @@ public class Scenery implements Disposable {
             if(positions[Settings.lodLevel].size > 0)
                 scenes.add(lodScenes[Settings.lodLevel]);
         }
-        if(Settings.singleInstance)
-            scenes.add(groundPlane);
         return scenes;
     }
 
