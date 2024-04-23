@@ -119,7 +119,8 @@ public class Terrain implements Disposable {
     // get terrain height at (x,z)
     public float getHeight(float x, float z) {
 //        float scale = Settings.terrainChunkSize;
-//        return noise.PerlinNoise(x/scale, z/scale) * TerrainChunk.AMPLITUDE;
+//        float ht = noise.PerlinNoise(z/scale, x/scale) * TerrainChunk.AMPLITUDE;
+//        return ht;
 
         // work out what chunk we're in
         // and the relative position for that chunk
@@ -129,8 +130,11 @@ public class Terrain implements Disposable {
         Integer key = makeKey(cx, cz);
         TerrainChunk chunk = chunks.get(key);
         if(chunk == null){
-            //Gdx.app.error("position outside chunks", "x:"+x+", z:"+z);
-            return 0;
+            // this can happen if the terrain chunk is not generated yet and e.g. we want to place some scenery here
+            // create terrain chunk on demand
+            chunk = new TerrainChunk(cx, cz, timeCounter);
+            chunks.put(key, chunk);
+            //Gdx.app.error("position outside chunks, generating on demand", "cx:"+cx+", cz:"+cz);
         }
         return chunk.getHeight(x - cx*Settings.terrainChunkSize, z - cz*Settings.terrainChunkSize);
     }

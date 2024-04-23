@@ -130,7 +130,7 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain, 30);
+        scenery = new Scenery(terrain, Settings.scenerySeparationDistance);
         sceneryDebug = new SceneryDebug( scenery );
 
         SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));

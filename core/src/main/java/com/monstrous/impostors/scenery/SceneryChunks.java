@@ -116,6 +116,9 @@ public class SceneryChunks implements Disposable {
         // Chunks are created if necessary.
         //
         if( !centre.equals(prevCentre) ) {  // if camera moved to new square
+
+            //Gdx.app.log("location", ""+px+" , "+pz);
+
             chunksInRange.clear();
             for (int cx = px - RANGE; cx <= px + RANGE; cx++) {
                 for (int cz = pz - RANGE; cz <= pz + RANGE; cz++) {

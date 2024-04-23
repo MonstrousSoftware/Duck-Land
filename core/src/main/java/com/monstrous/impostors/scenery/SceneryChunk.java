@@ -1,5 +1,6 @@
 package com.monstrous.impostors.scenery;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
@@ -45,6 +46,8 @@ public class SceneryChunk implements Disposable {
             x = point.x + chunkPosition.x-CHUNK_SIZE/2;
             z = point.y + chunkPosition.z-CHUNK_SIZE/2;
             h = terrain.getHeight(x, z);
+            if(h == 0)
+                Gdx.app.log("height is 0", "x= "+x+" z= "+z);
             float angleY = MathUtils.random(0.0f, (float)Math.PI*2.0f);      // random rotation around Y (up) axis
             Vector4 position = new Vector4( x, h, z, angleY);               // world position, not chunk relative position
             instancePositions.add( position );
