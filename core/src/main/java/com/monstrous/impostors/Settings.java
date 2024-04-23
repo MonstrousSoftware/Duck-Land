@@ -8,7 +8,7 @@ public class Settings {
     public static int       lodLevel = 3;
 
     public static boolean   dynamicLODAdjustment = false;
-    public static float     lod1Distance = 64f; //91f; //80f;
+    public static float     lod1Distance = 60f;
     public static float     lod2Distance = 2*lod1Distance;
     public static float     impostorDistance = 2*lod2Distance;
 

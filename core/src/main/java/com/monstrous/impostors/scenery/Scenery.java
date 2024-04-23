@@ -22,8 +22,6 @@ import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 
 import java.nio.FloatBuffer;
-import java.util.HashMap;
-import java.util.Map;
 
 
 // Class to manage many scenery items for an infinite area, placed at terrain height.
@@ -32,19 +30,13 @@ import java.util.Map;
 
 
 public class Scenery implements Disposable {
-    private static final int RANGE = 25;               // viewing range in chunks
 
     private static final int MAX_MODEL_INSTANCES =  500;
     private static final int MAX_DECAL_INSTANCES = 25000;
 
-    private final Terrain terrain;
-    private final float separationDistance;
+    SceneryChunks sceneryChunks;
     public Statistic[] statistics;
     public int instanceCount = 1;
-    final Map<Integer, SceneryChunk> chunks;        // map of terrain chunk per grid point
-    int timeCounter;                                // used as timestamp for chunk creation time
-    int lastCameraChange;                           // time stamp of last camera change
-    int lastCameraMove;                             // time stamp of last camera move (to new chunk)
     private final Array<Scene> scenes;
     private final Scene groundPlane;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
@@ -59,22 +51,14 @@ public class Scenery implements Disposable {
     private final TextureRegion textureRegion0;
     private float elevationStep;
     private int elevations;
-    private final Array<SceneryChunk> chunksInRange;
-    private final Array<SceneryChunk> visibleChunks;
     private FloatBuffer instanceData;   // temp buffer to transfer instance data
 
     public Scenery( Terrain terrain, float separationDistance ) {
-        this.terrain = terrain;
-        this.separationDistance = separationDistance;
+        sceneryChunks = new SceneryChunks(0, terrain, separationDistance );
 
-        chunks = new HashMap<>();
-        chunksInRange = new Array<>();
-        visibleChunks = new Array<>();
         lodScenes = new Scene[Settings.LOD_LEVELS];
         scenes = new Array<>();
         decalInstances = new Array<>();
-        timeCounter = 0;
-        lastCameraMove = 0;
 
         SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
         groundPlane = new Scene(sceneAsset.scene);
@@ -143,7 +127,7 @@ public class Scenery implements Disposable {
         }
 
         for(int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-            float estimate = 2f*(float)Math.PI*(float)Math.pow((Scenery.RANGE),2f);// * (Settings.cameraFOV / 360f);
+            float estimate = 2f*(float)Math.PI*(float)Math.pow((SceneryChunks.RANGE),2f);// * (Settings.cameraFOV / 360f);
             Gdx.app.log("level "+lod, "chunks: "+estimate);
             makeInstanced(lodScenes[lod].modelInstance, MAX_MODEL_INSTANCES);       // could make an estimate per LOD level here
             scenes.add(lodScenes[lod]);
@@ -176,7 +160,7 @@ public class Scenery implements Disposable {
     }
 
     // need to be rendered with the instanced decal shader
-    public Array<ModelInstance> getDecalInstances(){
+    public Array<ModelInstance> getImpostors(){
         return decalInstances;
     }
 
@@ -185,72 +169,13 @@ public class Scenery implements Disposable {
     private GridPoint2 v = new GridPoint2();
     private GridPoint2 prevCentre = new GridPoint2(Integer.MAX_VALUE,Integer.MAX_VALUE);
     private PerspectiveCamera prevCam = new PerspectiveCamera();
-
+    private int timeCounter;
 
     public void update(PerspectiveCamera cam, boolean forceUpdate){
         timeCounter++;
 
-        // quick exit if camera has not changed in position, direction or other parameters, because the instance data is then still valid
-        if(!Settings.singleInstance &&
-            !forceUpdate &&
-            cam.position.equals(prevCam.position) && cam.direction.equals(prevCam.direction)
-            && cam.up.equals(prevCam.up) && cam.near == prevCam.near && cam.far == prevCam.far && cam.fieldOfView == prevCam.fieldOfView)
-            return;
-
-        lastCameraChange = timeCounter;
-        // remember current camera settings for next call
-        prevCam.position.set(cam.position);
-        prevCam.direction.set(cam.direction);
-        prevCam.up.set(cam.up);
-        prevCam.near = cam.near;
-        prevCam.far = cam.far;
-        prevCam.fieldOfView = cam.fieldOfView;
-
-        int px = (int)Math.floor(cam.position.x/SceneryChunk.CHUNK_SIZE);
-        int pz = (int)Math.floor(cam.position.z/SceneryChunk.CHUNK_SIZE);
-        centre.set(px,pz);
-
-
-        // Create a list of chunks within visual range of the camera.
-        // Chunks are created if necessary.
-        //
-        if( !centre.equals(prevCentre) ) {  // if camera moved to new square
-            lastCameraMove = timeCounter;
-            chunksInRange.clear();
-            for (int cx = px - RANGE; cx <= px + RANGE; cx++) {
-                for (int cz = pz - RANGE; cz <= pz + RANGE; cz++) {
-
-                    // quickly discard chunks outside a circular range
-                    v.set(cx, cz);
-                    if (v.dst2(centre) >= RANGE * RANGE)
-                        continue;
-
-                    Integer key = makeKey(cx, cz);
-
-                    SceneryChunk chunk = chunks.get(key);
-                    if (chunk == null) {
-                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
-                        chunks.put(key, chunk);
-                        //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
-                    }
-                    chunksInRange.add(chunk);
-                }
-            }
-            prevCentre.set(centre);
-        }
-
-        // Select chunks that are in camera frustum
-        //
-        visibleChunks.clear();
-        for(SceneryChunk chunk : chunksInRange ) {
-            if (cam.frustum.boundsInFrustum(chunk.bbox)) {  // frustum culling
-                visibleChunks.add(chunk);
-                chunk.lastSeen = timeCounter;
-            }
-        }
-
-//        Gdx.app.log("chunks in range", ""+chunksInRange.size );
-//        Gdx.app.log("chunks visible", ""+visibleChunks.size );
+        sceneryChunks.update(cam, forceUpdate);
+        Array<SceneryChunk> visibleChunks = sceneryChunks.getVisibleChunks();
 
 
         // Now get the instance data from all visible chunks
@@ -258,18 +183,12 @@ public class Scenery implements Disposable {
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++)        // clear buffers per LOD level and for Impostors
             positions[lod].clear();
 
-        Integer centreKey = makeKey(centre.x, centre.y);
+        float diagonalDistance = 0.707f * SceneryChunk.CHUNK_SIZE;        // subtract distance from corner to centre of chunk in case the camera is in corner of chunk (0.5*sqrt(2))
+
         for(SceneryChunk chunk : visibleChunks ){
 
-            int level;
-
-            if(chunk.key == centreKey)      // make sure the chunk we're inside is at level 0, even if we are far from its centre
-                level = 0;
-            else {
-                float distance2 = cam.position.dst2(chunk.getWorldPosition());
-                level = determineLODlevel(distance2);
-                chunk.setLodLevel(level);
-            }
+            int level = determineLODlevel(chunk.distance - diagonalDistance);
+            chunk.setLodLevel(level);
 
             if(level == 0)      // for chunks at LOD0 level, go to individual instance level
                 allocateInstances(cam, chunk.getPositions() );
@@ -304,29 +223,6 @@ public class Scenery implements Disposable {
             instanceCount += positions[lod].size;
         }
         if (instanceCount > MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES);
-
-
-        if( chunks.size() > Settings.sceneryChunkCacheSize){
-            // find the last seen chunk
-            SceneryChunk oldest = null;
-            for(SceneryChunk chunk : chunks.values()){
-                if(oldest == null || chunk.lastSeen < oldest.lastSeen)
-                    oldest = chunk;
-            }
-            // now remove this chunk
-            if(oldest != null) {
-                int before = chunks.size();
-                chunks.remove(oldest.key);
-                oldest.dispose();
-                oldest = null;
-                Gdx.app.log("deleting scenery chunk", "num chunks "+chunks.size() + " before: "+before);
-            }
-        }
-    }
-
-    // convert chunk (X,Y) to a single integer for easy use as a key in the hash map
-    private int makeKey(int cx, int cz) {
-        return cx + 1000 * cz;
     }
 
     private Vector3 instancePosition = new Vector3();
@@ -339,22 +235,23 @@ public class Scenery implements Disposable {
 
             instancePosition.set( position.x, position.y, position.z );
             if(cam.frustum.sphereInFrustum(instancePosition, 1.5f*radius)) {        // some margin to prevent popping
-                float distance2 = cam.position.dst2(instancePosition);
-                int level = determineLODlevel(distance2);
+                float distance = cam.position.dst(instancePosition);
+                int level = determineLODlevel(distance);
                 positions[level].add(position);
             }
         }
     }
 
 
-    private int determineLODlevel( float distance2 ){
+
+    private int determineLODlevel( float distance ){
         // allocate this instance to one of the LOD levels depending on the distance
 
-        if (distance2 >= Settings.impostorDistance*Settings.impostorDistance   )        // optimized: most common case first
+        if (distance >= Settings.impostorDistance   )        // optimized: most common case first
             return 3;
-        else if ( distance2 >= Settings.lod2Distance * Settings.lod2Distance )
+        else if ( distance >= Settings.lod2Distance  )
             return 2;
-        else if (distance2 >= Settings.lod1Distance * Settings.lod1Distance  )
+        else if (distance >= Settings.lod1Distance   )
             return 1;
         else
             return 0;
@@ -432,8 +329,6 @@ public class Scenery implements Disposable {
     @Override
     public void dispose() {
         scenes.clear();
-        for(SceneryChunk chunk : chunks.values())
-            chunk.dispose();
-        chunks.clear();
+        sceneryChunks.dispose();
     }
 }

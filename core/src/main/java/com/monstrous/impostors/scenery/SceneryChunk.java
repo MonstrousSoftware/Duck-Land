@@ -18,6 +18,7 @@ public class SceneryChunk implements Disposable {
     public int lastSeen;
     public int creationTime;
     public int key;
+    public float distance;
 
     public SceneryChunk(int cx, int cz, int creationTime, int key, Terrain terrain, float separationDistance) {
         this.creationTime = creationTime;

@@ -65,12 +65,12 @@ public class SceneryDebug {
 
         int size = SIZE;  // pixels per chunk
         batch.begin();
-        for(SceneryChunk chunk : scenery.chunks.values() ) {
+        for(SceneryChunk chunk : scenery.sceneryChunks.chunks.values() ) {
             pos.set(chunk.getWorldPosition());
             pos.x /=SceneryChunk.CHUNK_SIZE;
             pos.z /=SceneryChunk.CHUNK_SIZE;
             convert(pos);
-            if(chunk.lastSeen != scenery.lastCameraChange)
+            if(chunk.lastSeen != scenery.sceneryChunks.lastCameraChange)
                 batch.draw(textureRegionChunkNotVisible, pos.x, pos.y-SIZE, size-2, size-2);
             else switch(chunk.getLodLevel()) {
                 case 0:              batch.draw(textureRegionChunk0, pos.x, pos.y - SIZE, size - 2, size - 2); break;
