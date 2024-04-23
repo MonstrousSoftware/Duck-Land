@@ -32,7 +32,7 @@ import java.nio.FloatBuffer;
 public class Scenery implements Disposable {
 
     private static final int MAX_MODEL_INSTANCES =  500;
-    private static final int MAX_DECAL_INSTANCES = 25000;
+    private static final int MAX_DECAL_INSTANCES = 35000;
 
     SceneryChunks sceneryChunks;
     public Statistic[] statistics;

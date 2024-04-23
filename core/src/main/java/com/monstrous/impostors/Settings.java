@@ -29,7 +29,7 @@ public class Settings {
 
     static public boolean   debugSceneryChunkAllocation = false;
     static public int       sceneryChunkCacheSize = 20000;
-    static public float     scenerySeparationDistance = 30f;
+    static public float     scenerySeparationDistance = 25f;
 
     static public boolean   skipChecksWhenCameraStill = true;       // don't recalculate when camera doesn't move, set to false when tuning for performance
 
