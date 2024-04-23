@@ -2,6 +2,7 @@
 23/04/2024
 
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
+![screenshot](https://github.com/MonstrousSoftware/Duck-Land/assets/49096535/928ce604-b8cb-4ca6-8402-e4d5f1b700f0)
 
 Demo of rendering many items at reasonable frame rate.
 REQUIRES OPENGL 4.3.
