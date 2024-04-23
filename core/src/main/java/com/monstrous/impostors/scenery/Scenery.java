@@ -39,6 +39,7 @@ public class Scenery implements Disposable {
     public int instanceCount = 1;
     private final Array<Scene> scenes;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
+    private final Vector3 modelCentre;
     private final float radius;
     private Array<Vector4>[] positions;
     private final ImpostorBuilder builder;
@@ -69,6 +70,8 @@ public class Scenery implements Disposable {
         Vector3 dimensions = new Vector3();
         modelBoundingBox.getDimensions(dimensions);
         radius =  dimensions.len() / 2f;     // determine model radius for frustum clipping
+        modelCentre = new Vector3();
+        modelBoundingBox.getCenter(modelCentre);        // offset from model origin to model centre (origin should be at floor level)
 
 
         positions = new Array[Settings.LOD_LEVELS+1];
@@ -220,14 +223,15 @@ public class Scenery implements Disposable {
 
     private Vector3 instancePosition = new Vector3();
 
-    // allocate instanced from this list on individual basis to LOD level
+    // allocate instances from this list on individual basis to LOD level
     // also perform individual frustum clipping
     //
     private void allocateInstances( Camera cam, Array<Vector4> positionsFromChunk ){
         for(Vector4 position : positionsFromChunk ){
 
-            instancePosition.set( position.x, position.y, position.z );
-            if(cam.frustum.sphereInFrustum(instancePosition, 1.5f*radius)) {        // some margin to prevent popping
+            instancePosition.set( position.x, position.y, position.z ).add(modelCentre);
+            if(cam.frustum.sphereInFrustum(instancePosition, radius)) {        // some margin to prevent popping
+                // determine level of detail from distance to camera
                 float distance = cam.position.dst(instancePosition);
                 int level = determineLODlevel(distance);
                 positions[level].add(position);
