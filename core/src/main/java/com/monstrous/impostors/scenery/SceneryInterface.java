@@ -8,11 +8,12 @@ import net.mgsx.gltf.scene3d.scene.Scene;
 public interface SceneryInterface {
 
 
-    public void update(PerspectiveCamera cam, boolean forceUpdate);
+    void update(float deltaTime, PerspectiveCamera cam, boolean forceUpdate);
 
-    public Array<Scene> getScenes();
+    // need to be rendered with the instanced PBR shader
+    Array<Scene> getScenes();
 
     // need to be rendered with the instanced decal shader
-    public Array<ModelInstance> getImpostors();
+    Array<ModelInstance> getImpostors();
 
 }

@@ -25,7 +25,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 public class ImpostorBuilder {
     public static final int NUM_ANGLES = 16;         // should be power of two to divide texture width evenly
     private static final int SHADOW_MAP_SIZE = 2048;
-    private static final String debugFilePath = "tmp/lodtest";
+    private static final String debugFilePath = null; // = "tmp/lodtest";
 
     private PerspectiveCamera camera;
     private SceneManager sceneManager;

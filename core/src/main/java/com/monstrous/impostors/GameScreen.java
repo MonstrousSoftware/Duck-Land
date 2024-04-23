@@ -172,14 +172,14 @@ public class GameScreen extends ScreenAdapter {
                 Settings.lodDistances[lod] = 1.1f * Settings.lodDistances[lod];
             Settings.dynamicLODAdjustment = false;
             Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
-            scenery.update( camera, true );
+            scenery.update( deltaTime, camera, true );
         }
         if(Gdx.input.isKeyJustPressed(Input.Keys.X)) {
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
                 Settings.lodDistances[lod] = 0.9f * Settings.lodDistances[lod];
             Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
             Settings.dynamicLODAdjustment = false;
-            scenery.update( camera, true );
+            scenery.update( deltaTime, camera, true );
         }
 
 
@@ -194,7 +194,7 @@ public class GameScreen extends ScreenAdapter {
         camController.update( deltaTime );
 
         terrain.update( camera );
-        scenery.update( camera, !Settings.skipChecksWhenCameraStill );
+        scenery.update( deltaTime, camera, !Settings.skipChecksWhenCameraStill );
 
         if(Settings.cascadedShadows) {
             csm.setCascades(sceneManager.camera, light, 0, 10f);

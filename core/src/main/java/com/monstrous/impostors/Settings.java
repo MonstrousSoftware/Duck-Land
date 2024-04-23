@@ -10,9 +10,6 @@ public class Settings {
     public static boolean   dynamicLODAdjustment = false;
     private static float     lod1Distance = 60f;
     public static float[]   lodDistances = { lod1Distance, 2f*lod1Distance, 4f*lod1Distance };  // distance for LOD1, LOD2, Impostors
-//
-//    public static float     lod2Distance = 2*lod1Distance;
-//    public static float     impostorDistance = 2*lod2Distance;
 
     public static boolean   decalsDebug = false;       // highlight decals with random background colour
 

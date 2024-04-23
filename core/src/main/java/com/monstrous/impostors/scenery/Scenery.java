@@ -18,6 +18,7 @@ import com.monstrous.impostors.Statistic;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
+import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 
@@ -29,7 +30,7 @@ import java.nio.FloatBuffer;
 // (currently only supports one type of item)
 
 
-public class Scenery implements Disposable {
+public class Scenery implements SceneryInterface, Disposable {
 
     private static final int MAX_MODEL_INSTANCES =  500;
     private static final int MAX_DECAL_INSTANCES = 35000;
@@ -61,7 +62,8 @@ public class Scenery implements Disposable {
         decalInstances = new Array<>();
 
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
+            SceneAsset sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".gltf"));
+            //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
             lodScenes[lod] = new Scene(sceneAsset.scene);
         }
 
@@ -156,8 +158,9 @@ public class Scenery implements Disposable {
     }
 
     private int timeCounter;
+    private float rotation;
 
-    public void update(PerspectiveCamera cam, boolean forceUpdate){
+    public void update(float deltaTime, PerspectiveCamera cam, boolean forceUpdate){
         timeCounter++;
 
         sceneryChunks.update(cam, forceUpdate);
@@ -191,7 +194,8 @@ public class Scenery implements Disposable {
             }
             if(Settings.lodLevel < 0)   // don't allow multiple LOD levels
                 Settings.lodLevel = 0;
-            Vector4 singlePos = new Vector4(0,0,0,timeCounter * 0.0005f);       // slowly rotate
+            rotation += deltaTime*0.5f;
+            Vector4 singlePos = new Vector4(0,0,0,rotation);       // slowly rotate
             positions[Settings.lodLevel].add(singlePos);
         }
 
