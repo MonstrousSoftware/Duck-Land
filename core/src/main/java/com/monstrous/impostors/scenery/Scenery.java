@@ -38,6 +38,7 @@ public class Scenery implements SceneryInterface, Disposable {
     SceneryChunks sceneryChunks;
     public Statistic[] statistics;
     public int instanceCount = 1;
+    private final SceneAsset sceneAsset;
     private final Array<Scene> scenes;
     private final Scene[] lodScenes;                // array of Scenes at different level of detail
     private final Vector3 modelCentre;
@@ -61,10 +62,16 @@ public class Scenery implements SceneryInterface, Disposable {
         scenes = new Array<>();
         decalInstances = new Array<>();
 
+        sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
-            SceneAsset sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".gltf"));
-            //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/ducky-lod" + lod + ".glb"));
-            lodScenes[lod] = new Scene(sceneAsset.scene);
+
+            // LOD nodes need to be named as "bla.LOD0", "bla.LOD1", "bla.LOD2"
+            String name = "ducky.LOD"+lod;
+            lodScenes[lod] = new Scene(sceneAsset.scene, name);
+            if(lodScenes[lod].modelInstance.nodes.size == 0) {
+                Gdx.app.error("GLTF load error: node not found", name);
+                Gdx.app.exit();
+            }
         }
 
         BoundingBox modelBoundingBox = new BoundingBox();
@@ -252,7 +259,7 @@ public class Scenery implements SceneryInterface, Disposable {
 
     private void makeInstanced( ModelInstance modelInstance, int maxInstances ) {
 
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+        Mesh mesh = modelInstance.nodes.first().parts.first().meshPart.mesh;       // get mesh belonging to the node (assuming there is not more than one)
 
         // add matrix per instance
         mesh.enableInstancedRendering(false, maxInstances,      // pass maximum instance count
@@ -266,7 +273,7 @@ public class Scenery implements SceneryInterface, Disposable {
 
         if(positions.size >= MAX_MODEL_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
 
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+        Mesh mesh = modelInstance.nodes.first().parts.first().meshPart.mesh;       // get mesh belonging to the node (assuming there is not more than one)
 
         // fill instance data buffer
         instanceData.clear();
@@ -285,7 +292,8 @@ public class Scenery implements SceneryInterface, Disposable {
 
 
     private void makeInstancedDecals( ModelInstance modelInstance, int maxInstances ) {
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+        Mesh mesh = modelInstance.nodes.first().parts.first().meshPart.mesh;       // get mesh belonging to the node (assuming there is not more than one)
+
 
         // add vector4 per instance containing position and Y rotation
         mesh.enableInstancedRendering(false, maxInstances,
@@ -297,7 +305,7 @@ public class Scenery implements SceneryInterface, Disposable {
     private void updateInstancedDecals( ModelInstance modelInstance, Array<Vector4> positions ) {
         if(positions.size >= MAX_DECAL_INSTANCES) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
 
-        Mesh mesh = modelInstance.model.meshes.first();       // assumes model is one mesh
+        Mesh mesh = modelInstance.nodes.first().parts.first().meshPart.mesh;       // get mesh belonging to the node (assuming there is not more than one)
 
         instanceData.clear();
         for(Vector4 pos: positions) {
@@ -318,5 +326,6 @@ public class Scenery implements SceneryInterface, Disposable {
     public void dispose() {
         scenes.clear();
         sceneryChunks.dispose();
+        sceneAsset.dispose();
     }
 }

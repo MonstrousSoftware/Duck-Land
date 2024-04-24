@@ -19,6 +19,7 @@ import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
 import com.monstrous.impostors.terrain.TerrainDebug;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
+import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
@@ -32,6 +33,7 @@ public class GameScreen extends ScreenAdapter {
     private static final int SHADOW_MAP_SIZE = 4096;
 
     private SceneManager sceneManager;
+    private SceneAsset sceneAsset;
     private Scene groundPlane;
     private PerspectiveCamera camera;
     private Cubemap diffuseCubemap;
@@ -133,8 +135,8 @@ public class GameScreen extends ScreenAdapter {
         scenery = new Scenery(terrain, Settings.scenerySeparationDistance);
         sceneryDebug = new SceneryDebug( scenery );
 
-        SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal("models/groundPlane.glb"));
-        groundPlane = new Scene(sceneAsset.scene);
+        sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
+        groundPlane = new Scene(sceneAsset.scene, "groundPlane");
 
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
     }
@@ -301,6 +303,7 @@ public class GameScreen extends ScreenAdapter {
         terrain.dispose();
         terrainDebug.dispose();
         scenery.dispose();
+        sceneAsset.dispose();
     }
 
 }
