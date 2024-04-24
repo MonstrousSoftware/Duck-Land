@@ -45,3 +45,19 @@ Notes:
 
 - For teavm (web) variant, it is necessary to use gltf-separate format instead of glb. (Although groundPlane.glb loads okay, perhaps because it is not textured).
 
+
+Modeling caveats
+----------------
+All models and LOD versions can be stored in the same gltf file.  The object names in Blender are used as node names to distinguish them.
+For models that have different levels of detail the naming convention in Blender is that they are called name.LOD0, name.LOD1 and name.LOD2 (substitute the model name for "name").
+
+The LOD models don't have to be positioned at the same spot in Blender. But you need to use Apply Transforms with each LOD model located at the origin.  Once you have done that
+you can move them to a different location. The location in Blender will be ignored on import, each object will be repositioned to where your performed Apply Transforms.
+
+Beware that a model with different materials will be split into different mesh parts and different meshes.  Only the first mesh will be instanced.
+If you use a shared palette and just select different colours (like in Imphenzia's low poly modeling tutorials) it will work fine.
+If you are applying one texture for the bark of a tree and another texture for the leaves, it won't work.  The stem will be instanced, but not the leaves.
+
+
+
+
