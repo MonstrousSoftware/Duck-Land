@@ -1,11 +1,11 @@
 package com.monstrous.impostors.terrain;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.monstrous.impostors.Settings;
+import com.monstrous.impostors.utils.Noise;
 import net.mgsx.gltf.scene3d.scene.Scene;
 
 import java.util.HashMap;

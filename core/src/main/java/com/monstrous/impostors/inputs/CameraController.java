@@ -10,6 +10,8 @@ import com.badlogic.gdx.utils.IntIntMap;
 import com.monstrous.impostors.Settings;
 import com.monstrous.impostors.terrain.Terrain;
 
+import java.util.Random;
+
 public class CameraController extends InputAdapter {
 
     private final float WALK_SPEED = 150f;
@@ -33,6 +35,7 @@ public class CameraController extends InputAdapter {
     protected final Vector3 tmp2 = new Vector3();
     protected final Vector3 tmp3 = new Vector3();
     private final Vector3 fwdHorizontal = new Vector3();
+    //private Random rand = new Random();
 
     public CameraController(PerspectiveCamera camera, Terrain terrain) {
         this.camera = camera;
@@ -80,6 +83,8 @@ public class CameraController extends InputAdapter {
 
         float ht = terrain.getHeight(camera.position.x, camera.position.z);
         camera.position.y = ht + eyeHeight;
+
+        //camera.position.y += speed*0.005f*(rand.nextFloat() - 0.5f);
 
         camera.update(true);
     }

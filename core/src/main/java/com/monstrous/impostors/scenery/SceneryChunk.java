@@ -5,7 +5,7 @@ import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
-import com.monstrous.impostors.PoissonDiskDistribution;
+import com.monstrous.impostors.utils.PoissonDiskDistribution;
 import com.monstrous.impostors.terrain.Terrain;
 
 public class SceneryChunk implements Disposable {

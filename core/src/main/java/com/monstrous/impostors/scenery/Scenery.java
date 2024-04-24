@@ -68,10 +68,11 @@ public class Scenery implements SceneryInterface, Disposable {
     }
 
     public Array<Scene> getScenes(){
+        scenes.clear();
+
         // for the sake of debug options we rebuild this as needed
         Scene[] lodScenes = lodModel.getScenes();
 
-        scenes.clear();
         if(Settings.lodLevel == -1) {
             for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
                if(lodModel.getInstanceCount(lod) > 0)

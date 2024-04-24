@@ -1,4 +1,4 @@
-package com.monstrous.impostors;
+package com.monstrous.impostors.utils;
 
 // Poisson disk distribution
 // generate an array of points randomly distributed in the given rectangle but no pair closer together than a minimum distance.
