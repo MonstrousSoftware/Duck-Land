@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.model.Node;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
@@ -66,12 +67,20 @@ public class Scenery implements SceneryInterface, Disposable {
         for(int lod = 0; lod < Settings.LOD_LEVELS;lod++) {
 
             // LOD nodes need to be named as "bla.LOD0", "bla.LOD1", "bla.LOD2"
-            String name = "ducky.LOD"+lod;
+            String name = "simplePalm.LOD"+lod;
             lodScenes[lod] = new Scene(sceneAsset.scene, name);
             if(lodScenes[lod].modelInstance.nodes.size == 0) {
                 Gdx.app.error("GLTF load error: node not found", name);
                 Gdx.app.exit();
             }
+
+            Node node = lodScenes[lod].modelInstance.nodes.first();
+
+            // reset node position to origin
+            node.translation.set(0, 0, 0);
+            node.scale.set(1, 1, 1);
+            node.rotation.idt();
+            lodScenes[lod].modelInstance.calculateTransforms();
         }
 
         BoundingBox modelBoundingBox = new BoundingBox();
