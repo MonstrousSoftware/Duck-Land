@@ -15,6 +15,7 @@ public class GUI {
     private Skin skin;
 
     private Label fpsLabel;
+    private Label[] typeLabels;
     private Label[] vertsLabels;
     private Label[] instancesLabels;
     private Label totalInstancesLabel;
@@ -32,47 +33,54 @@ public class GUI {
     private void rebuild() {
         stage.clear();
 
-        String type = "window";
+        String labelType  = "window";
 
         Table screenTable = new Table();
         screenTable.setFillParent(true);
 
-        screenTable.add(new Label("FPS: ", skin, type)).left().pad(5);
-        fpsLabel = new Label("", skin, type);
+        screenTable.add(new Label("FPS: ", skin, labelType)).left().pad(5);
+        fpsLabel = new Label("", skin, labelType);
         screenTable.add(fpsLabel).left();
         screenTable.row();
 
 
-        screenTable.add(new Label("Total Instances: ", skin, type)).left().pad(5);
-        totalInstancesLabel = new Label("", skin, type);
+        screenTable.add(new Label("Total Instances: ", skin, labelType)).left().pad(5);
+        totalInstancesLabel = new Label("", skin, labelType);
         screenTable.add(totalInstancesLabel).left();
         screenTable.row();
 
 
-        screenTable.add(new Label("LOD Level: ", skin, type)).left().pad(5);
+        // column headers
+        screenTable.add(new Label("", skin, labelType)).left().pad(5);
+        screenTable.add(new Label("", skin, labelType)).left().pad(5);
         for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            Label lodLabel = new Label(""+lod, skin, type);
+            Label lodLabel = new Label("LOD"+lod, skin, labelType);
             if(lod == Settings.LOD_LEVELS)
                 lodLabel.setText("Impostor");
             screenTable.add(lodLabel).width(100).left();
         }
         screenTable.row();
 
-        vertsLabels = new Label[Settings.LOD_LEVELS+1];
-        screenTable.add(new Label("vertices: ", skin, type)).left().pad(5);
-        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            vertsLabels[lod] = new Label("", skin, type);
-            screenTable.add(vertsLabels[lod]).left();
-        }
-        screenTable.row();
+//        vertsLabels = new Label[Settings.LOD_LEVELS+1];
+//        screenTable.add(new Label("vertices: ", skin, type)).left().pad(5);
+//        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
+//            vertsLabels[lod] = new Label("", skin, type);
+//            screenTable.add(vertsLabels[lod]).left();
+//        }
+//        screenTable.row();
 
-        instancesLabels = new Label[Settings.LOD_LEVELS+1];
-        screenTable.add(new Label("instances: ", skin, type)).left().pad(5);
-        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            instancesLabels[lod] = new Label("", skin, type);
-            screenTable.add(instancesLabels[lod]).left();
+        typeLabels = new Label[screen.scenery.numTypes];
+        instancesLabels = new Label[screen.scenery.numTypes * (Settings.LOD_LEVELS + 1)];
+        for(int type = 0; type < screen.scenery.numTypes; type++) {
+            typeLabels[type] = new Label(screen.scenery.statistics.getName(type), skin, labelType);
+            screenTable.add(typeLabels[type]).left().pad(5);
+            screenTable.add(new Label("instances: ", skin, labelType)).left().pad(5);
+            for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+                instancesLabels[type*(Settings.LOD_LEVELS+1)+lod] = new Label("", skin, labelType);
+                screenTable.add(instancesLabels[type*(Settings.LOD_LEVELS+1)+lod]).left();
+            }
+            screenTable.row();
         }
-        screenTable.row();
 
         screenTable.bottom().left();
         screenTable.pack();
@@ -82,10 +90,13 @@ public class GUI {
 
     private void updateLabels(){
         int total = 0;
-        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            vertsLabels[lod].setText(screen.scenery.statistics[lod].vertexCount);
-            instancesLabels[lod].setText(screen.scenery.statistics[lod].instanceCount);
-            total += screen.scenery.statistics[lod].instanceCount;
+        int index = 0;
+        for(int type = 0; type < screen.scenery.numTypes; type++) {
+            for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+                //vertsLabels[lod].setText(screen.scenery.statistics.getVertexCount(type, lod));
+                instancesLabels[index++].setText(screen.scenery.statistics.getInstanceCount(type, lod));
+                total += screen.scenery.statistics.getInstanceCount(type, lod);
+            }
         }
         totalInstancesLabel.setText(total);
         fpsLabel.setText( Gdx.graphics.getFramesPerSecond());

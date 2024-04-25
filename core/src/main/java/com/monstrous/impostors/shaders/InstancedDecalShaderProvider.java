@@ -4,6 +4,7 @@ package com.monstrous.impostors.shaders;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.g3d.Attributes;
+import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.Shader;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
@@ -56,6 +57,8 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
             //
             //    Instance data:
             //    in vec4 i_offset;
+            //
+            // Note: we can use the same shader for decals with different textures and uvDimensions
 
             @Override
             public void init() {
@@ -76,21 +79,21 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 this.context = context;
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
-                program.setUniformi("u_texture", unit);
+
                 float[] camPos = new float[3];
                 camPos[0] = camera.position.x;
                 camPos[1] = camera.position.y;
                 camPos[2] = camera.position.z;
                 program.setUniform3fv("u_camPos", camPos,0,3);
-
-//                context.setDepthTest(GL32.GL_LESS);
-                //context.setDepthTest(GL30.GL_LEQUAL);
             }
 
             @Override
             public void render(Renderable renderable, Attributes combinedAttributes) {
                 if(renderable.userData == null) throw new GdxRuntimeException("Missing UVsize, renderable.userData is null");
+
+                final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
+                program.setUniformi("u_texture", unit);
+
                 UVSize uvDimensions = (UVSize)(renderable.userData);
                 program.setUniformf("u_step", uvDimensions.u, uvDimensions.v);
 
@@ -100,12 +103,12 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
             @Override
             public int compareTo(Shader other) {
                 return 0;
-            }           // FIXME
+            }
 
             @Override
             public boolean canRender(Renderable instance) {
-                return true;
-            }       // FIXME
+                return instance.userData != null;
+            }
         };
     }
 

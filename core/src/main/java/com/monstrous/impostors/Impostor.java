@@ -36,8 +36,6 @@ public class Impostor {
 //        halfWidth *= 1.2f;
 //        height *= 1.2f;
 
-
-
         // use the impostor texture as material and use alpha blending
         Material material = new Material(
             TextureAttribute.createDiffuse(textureRegion.getTexture()),

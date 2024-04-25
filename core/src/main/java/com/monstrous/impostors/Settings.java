@@ -8,7 +8,7 @@ public class Settings {
     public static int       lodLevel = 3;
 
     public static boolean   dynamicLODAdjustment = false;
-    private static float     lod1Distance = 60f;
+    private static float    lod1Distance = 60f;
     public static float[]   lodDistances = { lod1Distance, 2f*lod1Distance, 4f*lod1Distance };  // distance for LOD1, LOD2, Impostors
 
     public static boolean   decalsDebug = false;       // highlight decals with random background colour

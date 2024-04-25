@@ -2,28 +2,17 @@ package com.monstrous.impostors.scenery;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.*;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
-import com.badlogic.gdx.graphics.g3d.model.Node;
 import com.badlogic.gdx.math.*;
-import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.monstrous.impostors.Impostor;
-import com.monstrous.impostors.ImpostorBuilder;
 import com.monstrous.impostors.Settings;
-import com.monstrous.impostors.Statistic;
-import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
+import com.monstrous.impostors.Statistics;
 import com.monstrous.impostors.terrain.Terrain;
-import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
-
-import java.nio.FloatBuffer;
 
 
 // Class to manage many scenery items for an infinite area, placed at terrain height.
@@ -37,8 +26,9 @@ public class Scenery implements SceneryInterface, Disposable {
     private static final int MAX_DECAL_INSTANCES = 35000;
 
     SceneryChunks sceneryChunks;
-    LodModel lodModel;
-    public Statistic[] statistics;
+    Array<LodModel> lodModels;
+    public Statistics statistics;
+    public int numTypes;
     public int instanceCount = 1;
     private final SceneAsset sceneAsset;
     private final Array<Scene> scenes;
@@ -46,22 +36,38 @@ public class Scenery implements SceneryInterface, Disposable {
 
 
     public Scenery( Terrain terrain, float separationDistance ) {
-        sceneryChunks = new SceneryChunks(0, terrain, separationDistance );
+        lodModels = new Array<>();
+
 
         sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
-        lodModel = new LodModel(sceneAsset, "ducky", 3, MAX_MODEL_INSTANCES, MAX_DECAL_INSTANCES);
+        lodModels.add( new LodModel(sceneAsset, "ducky", Settings.LOD_LEVELS, MAX_MODEL_INSTANCES, MAX_DECAL_INSTANCES) );
+        lodModels.add( new LodModel(sceneAsset, "simplePalm", Settings.LOD_LEVELS, MAX_MODEL_INSTANCES, MAX_DECAL_INSTANCES));
+
+        numTypes = lodModels.size;
+        statistics = new Statistics(numTypes, Settings.LOD_LEVELS);
+        statistics.setName(0, "Duck");
+        statistics.setName(1, "Palm Tree");
+
+        float[]  bias = { .98f, .02f };       // relative probabilities per type, should add up to 1.0
+
+        sceneryChunks = new SceneryChunks(0, terrain, numTypes, bias, separationDistance );
+
 
         scenes = new Array<>();
         decalInstances = new Array<>();
 
 
-        statistics = new Statistic[Settings.LOD_LEVELS+1];
-        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
-            statistics[lod] = new Statistic();
-            statistics[lod].vertexCount = lodModel.getVertexCount(lod);
+
+        for(int type = 0; type < numTypes; type++ ) {
+            for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+                statistics.setVertexCount(type, lod, lodModels.get(type).getVertexCount(lod));
+//                statistics[lod] = new Statistics();
+//                statistics[lod].vertexCount = lodModels.first().getVertexCount(lod);
+            }
         }
 
-        decalInstances.add(lodModel.getImpostor());
+        for(LodModel lodModel : lodModels)
+            decalInstances.add(lodModel.getImpostor());
 
         Settings.lodLevel = -1;     // show all LOD levels and impostors
 
@@ -71,17 +77,18 @@ public class Scenery implements SceneryInterface, Disposable {
         scenes.clear();
 
         // for the sake of debug options we rebuild this as needed
-        Scene[] lodScenes = lodModel.getScenes();
+        for(LodModel lodModel : lodModels) {
+            Scene[] lodScenes = lodModel.getScenes();
 
-        if(Settings.lodLevel == -1) {
-            for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
-               if(lodModel.getInstanceCount(lod) > 0)
-                    scenes.add(lodScenes[lod]);
+            if (Settings.lodLevel == -1) {
+                for (int lod = 0; lod < Settings.LOD_LEVELS; lod++) {
+                    if (lodModel.getInstanceCount(lod) > 0)
+                        scenes.add(lodScenes[lod]);
+                }
+            } else if (Settings.lodLevel < Settings.LOD_LEVELS) {
+                if (lodModel.getInstanceCount(Settings.lodLevel) > 0)
+                    scenes.add(lodScenes[Settings.lodLevel]);
             }
-        }
-        else if (Settings.lodLevel < Settings.LOD_LEVELS) {
-            if(lodModel.getInstanceCount(Settings.lodLevel) > 0)
-                scenes.add(lodScenes[Settings.lodLevel]);
         }
         return scenes;
     }
@@ -99,14 +106,15 @@ public class Scenery implements SceneryInterface, Disposable {
 
         // Now get the instance data from all visible chunks
         //
-        lodModel.beginInstances();
+        for(LodModel lodModel : lodModels)
+            lodModel.beginInstances();
 
         if(Settings.singleInstance){
             if(Settings.lodLevel < 0)   // don't allow multiple LOD levels
                 Settings.lodLevel = 0;
             rotation += deltaTime*0.5f;
             Vector4 singlePos = new Vector4(0,0,0,rotation);       // slowly rotate
-            lodModel.addInstance(Settings.lodLevel, singlePos);
+            lodModels.get(1).addInstance(Settings.lodLevel, singlePos);
 
         } else {
 
@@ -117,24 +125,30 @@ public class Scenery implements SceneryInterface, Disposable {
                 int level = determineLODlevel(chunk.distance - diagonalDistance);
                 chunk.setLodLevel(level);
 
-                if (level <= 2)      // for chunks at high LOD level (high poly count), test at individual instance level
-                    lodModel.addInstances(cam, chunk.getPositions());
-                else
-                    lodModel.addInstances(level, chunk.getPositions());
+                int type = 0;
+                for(LodModel lodModel : lodModels) {    // for each scenery type
+                    if (level <= 2)      // for chunks at high LOD level (high poly count), test at individual instance level
+                        lodModel.addInstances(cam, chunk.getPositions(type));
+                    else
+                        lodModel.addInstances(level, chunk.getPositions(type));
+                    type++;
+                }
             }
 
         }
-
-        lodModel.endInstances();
+        for(LodModel lodModel : lodModels)
+            lodModel.endInstances();
 
 
         // Update the stats for the GUI
         //
         instanceCount = 0;
-        for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
-            int num = lodModel.getInstanceCount(lod);
-            statistics[lod].instanceCount = num;
-            instanceCount += num;
+        for(int type = 0; type < numTypes; type++ ) {
+            for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
+                int num = lodModels.get(type).getInstanceCount(lod);
+                statistics.setInstanceCount(type, lod, num);
+                instanceCount += num;
+            }
         }
         if (instanceCount > MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES) throw new GdxRuntimeException("Too many instances! > " + MAX_MODEL_INSTANCES+MAX_DECAL_INSTANCES);
     }
@@ -154,6 +168,7 @@ public class Scenery implements SceneryInterface, Disposable {
         scenes.clear();
         sceneryChunks.dispose();
         sceneAsset.dispose();
-        lodModel.dispose();
+        for(LodModel lodModel : lodModels)
+            lodModel.dispose();
     }
 }

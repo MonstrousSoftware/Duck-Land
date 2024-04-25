@@ -2,26 +2,12 @@ package com.monstrous.impostors.scenery;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.*;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g3d.Model;
-import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.math.*;
-import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Disposable;
-import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.monstrous.impostors.Impostor;
-import com.monstrous.impostors.ImpostorBuilder;
 import com.monstrous.impostors.Settings;
-import com.monstrous.impostors.Statistic;
-import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
-import net.mgsx.gltf.loaders.glb.GLBLoader;
-import net.mgsx.gltf.scene3d.scene.Scene;
-import net.mgsx.gltf.scene3d.scene.SceneAsset;
 
-import java.nio.FloatBuffer;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +23,8 @@ public class SceneryChunks implements Disposable {
     public static final int RANGE = 35;               // viewing range in chunks
 
     private final Terrain terrain;
+    private final int numTypes;
+    private float[] bias;
     private final float separationDistance;
     final Map<Integer, SceneryChunk> chunks;        // map of scenery chunk per grid point
     private final Array<SceneryChunk> chunksInRange;
@@ -62,8 +50,10 @@ public class SceneryChunks implements Disposable {
 
     // if worldSize <= 0 it means infinite terrain.
 
-    public SceneryChunks(float worldSize, Terrain terrain, float separationDistance ) {
+    public SceneryChunks(float worldSize, Terrain terrain, int numTypes, float[] bias, float separationDistance ) {
         this.terrain = terrain;
+        this.numTypes = numTypes;
+        this.bias = bias;
         this.separationDistance = separationDistance;
         comparator = new ChunkComparator();
 
@@ -138,7 +128,7 @@ public class SceneryChunks implements Disposable {
 
                     SceneryChunk chunk = chunks.get(key);
                     if (chunk == null) {
-                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, separationDistance);
+                        chunk = new SceneryChunk(cx, cz, timeCounter, key, terrain, numTypes, bias, separationDistance);
                         chunks.put(key, chunk);
                         //Gdx.app.log("creating scenery chunk", "num chunks "+chunks.size());
                     }

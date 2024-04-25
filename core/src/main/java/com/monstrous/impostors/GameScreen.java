@@ -60,7 +60,8 @@ public class GameScreen extends ScreenAdapter {
             throw new GdxRuntimeException("GLES 3.0 profile required for this programme.");
         }
 
-        gui = new GUI( this );
+
+
 
         // hide the mouse cursor and fix it to screen centre, so it doesn't go out the window canvas
         Gdx.input.setCursorCatched(true);
@@ -81,8 +82,16 @@ public class GameScreen extends ScreenAdapter {
 		camera.update();
         sceneManager.setCamera(camera);
 
+
+
         terrain = new Terrain(camera.position);
         terrainDebug = new TerrainDebug(terrain);
+
+        scenery = new Scenery(terrain, Settings.scenerySeparationDistance);
+        sceneryDebug = new SceneryDebug( scenery );
+
+
+        gui = new GUI( this );
 
         camera.position.set(0, terrain.getHeight(0, 50) + 10, 50);
 
@@ -106,7 +115,7 @@ public class GameScreen extends ScreenAdapter {
 
         float farPlane = 300;
         float nearPlane = 0;
-        float VP_SIZE = 300f;
+        float VP_SIZE = 512f;
         light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(VP_SIZE,VP_SIZE,nearPlane,farPlane);
 
         light.direction.set(1, -3, 1).nor();
@@ -132,8 +141,9 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        scenery = new Scenery(terrain, Settings.scenerySeparationDistance);
-        sceneryDebug = new SceneryDebug( scenery );
+
+
+
 
         sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
         groundPlane = new Scene(sceneAsset.scene, "groundPlane");
