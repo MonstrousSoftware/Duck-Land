@@ -1,5 +1,9 @@
 package com.monstrous.impostors;
 
+import com.badlogic.gdx.Gdx;
+
+import static com.badlogic.gdx.Application.ApplicationType.Desktop;
+
 public class Settings {
 
 
@@ -11,12 +15,13 @@ public class Settings {
     private static float    lod1Distance = 60f;
     public static float[]   lodDistances = { lod1Distance, 2f*lod1Distance, 4f*lod1Distance };  // distance for LOD1, LOD2, Impostors
 
+    public static boolean   loadAtlasFromFile = (Gdx.app.getType() != Desktop);     // only on desktop can we generate atlas on the fly
     public static boolean   decalsDebug = false;       // highlight decals with random background colour
 
 
     // Lighting
     public static float     ambientLightLevel = 0.3f;
-    public static boolean   cascadedShadows = true;
+    public static boolean   cascadedShadows = (Gdx.app.getType() == Desktop);       // breaks teaVM
 
     // Terrain
     static public float     terrainChunkSize = 2048;

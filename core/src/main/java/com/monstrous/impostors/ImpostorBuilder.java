@@ -16,7 +16,7 @@ import net.mgsx.gltf.scene3d.lights.DirectionalShadowLight;
 import net.mgsx.gltf.scene3d.scene.Scene;
 import net.mgsx.gltf.scene3d.scene.SceneManager;
 import net.mgsx.gltf.scene3d.utils.IBLBuilder;
-
+import static com.badlogic.gdx.Application.ApplicationType.Desktop;
 
 // name could be improved
 // to create texture images from a model for use as impostor
@@ -25,7 +25,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 public class ImpostorBuilder {
     public static final int NUM_ANGLES = 16;         // should be power of two to divide texture width evenly
     private static final int SHADOW_MAP_SIZE = 2048;
-    private static final String debugFilePath = null; // = "tmp/lodtest";
+    private static final String debugFilePath =  "tmp/lodtest";
 
     private PerspectiveCamera camera;
     private SceneManager sceneManager;
@@ -114,9 +114,26 @@ public class ImpostorBuilder {
         return cameraDistance;
     }
 
+    // instead of creating the atlas on the fly, load it from an image file and use hard codes region size
+    // Needed for teaVM which doesn't like Pixmaps
+    //
+    public Texture loadAtlas(String name, Vector2 regionSize) {
+        if(name.contentEquals("ducky")) {
+            Texture texture = new Texture(Gdx.files.internal("textures/ducky-atlas.png"));
+            regionSize.set(128, 202);
+            return texture;
+        }
+        if(name.contentEquals("simplePalm")) {
+            Texture texture = new Texture(Gdx.files.internal("textures/simplePalm-atlas.png"));
+            regionSize.set(128, 250);
+            return texture;
+        }
+        return null;
+    }
 
-    public Texture createImpostor(Scene model, int textureSize, Vector2 regionSize){
-
+    public Texture createImpostor(String name, Scene model, int textureSize, Vector2 regionSize){
+        if(Settings.loadAtlasFromFile)
+            return loadAtlas(name, regionSize);
 
         Pixmap atlasPixmap = new Pixmap(textureSize, textureSize, Pixmap.Format.RGBA8888);
 
@@ -141,12 +158,6 @@ public class ImpostorBuilder {
 
         int clipWidth =  (int)(1 + v2.x - v1.x);
         int clipHeight = (int)(1 + v2.y - v1.y);
-
-//        v1.x -= clipWidth*0.2f;
-//        v1.y -= clipHeight*0.1f;
-//        clipWidth *= 1.4;
-//        clipHeight *= 1.2;
-
 
         int texHeight = clipHeight; //texWidth * clipHeight/clipWidth;  // keep aspect ratio
         //int texHeight = (int)(textureSize /4f);
@@ -193,7 +204,6 @@ public class ImpostorBuilder {
                 // we can't create pixmap from an fbo, only from the screen buffer
                 // or we could work with Texture instead of Pixmap (but Pixmap allows us to write export debug images to file)
 //                Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
 //                if (debugFilePath != null) {
 //                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap, 0, false);
 //                }
@@ -201,11 +211,6 @@ public class ImpostorBuilder {
 
                 // clip the desired rectangle to a pixmap
                 Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int) v1.x, (int) v1.y, clipWidth, clipHeight);
-
-                //Pixmap clippedPixmap = Pixmap.createFromFrameBuffer((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
-//                if (debugFilePath != null) {
-//                    PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("clipped" + elevation+"x"+angle + ".png"), clippedPixmap, 0, true);
-//                }
 
                 // add this clipped image to the atlas which contains screenshots from different angles
                 // rotation around Y is shown as 8 images left to right
@@ -221,7 +226,7 @@ public class ImpostorBuilder {
                 atlasPixmap.setFilter(Pixmap.Filter.BiLinear);
                 atlasPixmap.drawPixmap(clippedPixmap, 0, 0,texWidth, texHeight, offsetX, offsetY, texWidth, texHeight);
 
-//                fboPixmap.dispose();
+
                 clippedPixmap.dispose();
             }
         }
@@ -233,6 +238,11 @@ public class ImpostorBuilder {
         Texture texture = new Texture(atlasPixmap, true);
         atlasPixmap.dispose();
         return texture;
+
+
+//        Texture texture = new Texture(Gdx.files.internal("textures/atlas.png"));
+//        regionSize.set(128, 202);
+//        return texture;
     }
 
 

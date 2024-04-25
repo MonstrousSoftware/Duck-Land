@@ -11,6 +11,7 @@ REQUIRES OPENGL 4.3.
 Uses multiple levels of details for the model (need to be supplied as glb files). 
 Uses impostors (billboards) at long distance (these are generated on the fly).
 Uses OpenGL instancing for LOD models and for the impostors.
+Will try to dynamically reduce the LOD distance for better performance if your frame rate falls below 60.
 
 
 If this demo runs too slow on your computer, it will automatically adapt the quality settings (LOD distances) to try and achieve at least 60 fps.
@@ -33,6 +34,7 @@ Demo Options:
 - M to toggle single instance view (use TAB to view the different LOD models)
 - F to toggle full screen mode
 
+Web version can be played at: https://monstrous-software.itch.io/duck-land
 
 
 
@@ -43,8 +45,6 @@ Notes:
  below the clipped region.  If we add a safety margin, the decals appear to be floating in the air when upright.
 
 - Known issue: when viewing from above the impostors flatten out sideways leaving a hole in the middle.
-
-- (gdx-teavm version not working yet as the impostors don't appear.)
 
 
 Modeling caveats

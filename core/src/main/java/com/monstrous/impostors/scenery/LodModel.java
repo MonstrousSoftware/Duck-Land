@@ -49,7 +49,7 @@ public class LodModel implements Disposable {
     // nodeNameRoot is "tree" if the LOD nodes are called "tree.LOD0", "tree.LOD1", "tree.LOD2"
     //
     public LodModel(SceneAsset sceneAsset, String nodeNameRoot, int lodLevels, int maxModelInstances, int maxImpostorInstances) {
-        this.nodeName = nodeName;
+        this.nodeName = nodeNameRoot;
         this.lodLevels = lodLevels;
         this.maxModelInstances = maxModelInstances;
         this.maxImpostorInstances = maxImpostorInstances;
@@ -183,7 +183,7 @@ public class LodModel implements Disposable {
         int textureSize = 2048;
         regionSize = new Vector2();
         // make a texture of the model from different angles
-        impostorTexture = builder.createImpostor(lodScenes[0], textureSize, regionSize);
+        impostorTexture = builder.createImpostor(nodeName, lodScenes[0], textureSize, regionSize);
         Gdx.app.log("region size", ""+regionSize.x+" , "+regionSize.y);
 
 
