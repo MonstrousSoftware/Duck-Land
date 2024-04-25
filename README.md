@@ -43,7 +43,7 @@ Notes:
 
 - Known issue: when viewing from above the impostors flatten out sideways leaving a hole in the middle.
 
-- For teavm (web) variant, it is necessary to use gltf-separate format instead of glb. (Although groundPlane.glb loads okay, perhaps because it is not textured).
+- (gdx-teavm version not working yet as the impostors don't appear.)
 
 
 Modeling caveats
