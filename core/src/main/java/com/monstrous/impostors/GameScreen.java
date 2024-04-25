@@ -51,6 +51,7 @@ public class GameScreen extends ScreenAdapter {
     private TerrainDebug terrainDebug;
     private SceneryDebug sceneryDebug;
     public Scenery scenery;
+    private int width, height;
 
 
     @Override
@@ -193,6 +194,19 @@ public class GameScreen extends ScreenAdapter {
             Settings.dynamicLODAdjustment = false;
             scenery.update( deltaTime, camera, true );
         }
+        // Use F11 key to toggle full screen / windowed screen
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+            if (!Gdx.graphics.isFullscreen()) {
+                width = Gdx.graphics.getWidth();
+                height = Gdx.graphics.getHeight();
+                Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+                Gdx.app.log("To fullscreen", "from "+width+" x "+height);
+            } else {
+                Gdx.graphics.setWindowedMode(width, height);
+                Gdx.app.log("To windowed mode", "" + width + " x " + height);
+            }
+        }
+
 
 
         // animate camera
