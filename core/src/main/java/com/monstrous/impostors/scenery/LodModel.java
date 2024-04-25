@@ -222,21 +222,26 @@ public class LodModel implements Disposable {
 
     private void updateInstanced( ModelInstance modelInstance, Array<Vector4> positions ) {
 
-        if(positions.size >= maxModelInstances) throw new GdxRuntimeException("too many instances for instance buffer: "+positions.size);
+        int count = positions.size;
+        if(positions.size >= maxModelInstances) {
+            Gdx.app.error("buffer size", "too many instances for instance buffer: " + positions.size);
+            count = maxModelInstances-1;
+        }
 
         Mesh mesh = modelInstance.nodes.first().parts.first().meshPart.mesh;       // get mesh belonging to the node (assuming there is not more than one)
 
         // fill instance data buffer
         instanceData.clear();
         Matrix4 instanceTransform = new Matrix4();
-        for(Vector4 pos: positions) {
+        for(int i = 0; i < count; i++) {
+            Vector4 pos = positions.get(i);
 
             instanceTransform.setToRotationRad(Vector3.Y, pos.w);
             instanceTransform.setTranslation(pos.x, pos.y, pos.z);
             // transpose matrix for GLSL
             instanceData.put(instanceTransform.tra().getValues());                // transpose matrix for GLSL
         }
-        instanceData.limit( positions.size * 16 );  // amount of data in buffer
+        instanceData.limit( count * 16 );  // amount of data in buffer
         instanceData.position(0);      // rewind float buffer to start
         mesh.setInstanceData(instanceData);
     }
