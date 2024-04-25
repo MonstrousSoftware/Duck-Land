@@ -311,10 +311,8 @@ void main() {
 	#endif
 
     // MS
-    vec3 normalVec = a_normal;
     #if defined(instanced)
         pos *= i_worldTrans;
-        normalVec = a_normal * transpose(inverse(mat3(i_worldTrans)));
     #endif
     // end MS
 
@@ -335,7 +333,15 @@ void main() {
 
 	#if defined(normalFlag)
 
-        vec3 morph_nor = normalVec;    // MM: was a_normal
+        // MS
+        #if defined(instanced)
+            vec3 morph_nor = mat3(i_worldTrans) * a_normal;
+        #else
+            vec3 morph_nor = a_normal;
+        #endif
+        // to do: transform of tangent vector
+        // end MS
+
 		#ifdef morphTargetsFlag
 			#ifdef normal0Flag
 				morph_nor += a_normal0 * u_morphTargets1.x;
