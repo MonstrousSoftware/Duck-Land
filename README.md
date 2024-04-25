@@ -31,6 +31,7 @@ Demo Options:
 - P to toggle scenery chunks overlay (colour indicated LOD level)
 - Z, X to change LOD distances
 - M to toggle single instance view (use TAB to view the different LOD models)
+- F to toggle full screen mode
 
 
 
