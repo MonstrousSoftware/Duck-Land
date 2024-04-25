@@ -16,7 +16,7 @@ public class Settings {
 
     // Lighting
     public static float     ambientLightLevel = 0.3f;
-    public static boolean   cascadedShadows = false;
+    public static boolean   cascadedShadows = true;
 
     // Terrain
     static public float     terrainChunkSize = 2048;

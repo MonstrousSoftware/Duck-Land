@@ -30,7 +30,7 @@ import net.mgsx.gltf.scene3d.utils.IBLBuilder;
 
 public class GameScreen extends ScreenAdapter {
 
-    private static final int SHADOW_MAP_SIZE = 4096;
+    private static final int SHADOW_MAP_SIZE = 8192; //4096;
 
     private SceneManager sceneManager;
     private SceneAsset sceneAsset;
@@ -103,7 +103,7 @@ public class GameScreen extends ScreenAdapter {
         im.addProcessor(gui.stage);
         im.addProcessor(camController);
 
-        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 0.01f));
+        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 0.00001f));
 
         if(Settings.cascadedShadows) {
             csm = new CascadeShadowMap(2);
@@ -116,7 +116,7 @@ public class GameScreen extends ScreenAdapter {
 
         float farPlane = 300;
         float nearPlane = 0;
-        float VP_SIZE = 512f;
+        float VP_SIZE = 300f;
         light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(VP_SIZE,VP_SIZE,nearPlane,farPlane);
 
         light.direction.set(1, -3, 1).nor();
@@ -141,9 +141,6 @@ public class GameScreen extends ScreenAdapter {
         // setup skybox
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
-
-
-
 
 
         sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
@@ -223,7 +220,7 @@ public class GameScreen extends ScreenAdapter {
         scenery.update( deltaTime, camera, !Settings.skipChecksWhenCameraStill );
 
         if(Settings.cascadedShadows) {
-            csm.setCascades(sceneManager.camera, light, 0, 10f);
+            csm.setCascades(sceneManager.camera, light, 0, 6f);
         }
         else
             light.setCenter(camera.position); // keep shadow light on player so that we have shadows
