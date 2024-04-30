@@ -74,16 +74,16 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 init(program, renderable);
                 ShaderProgram.prependVertexCode = null;
                 ShaderProgram.prependFragmentCode = null;
-
-
-
             }
 
-//            @Override
-//            public void begin(Camera camera, RenderContext context) {
-//                this.context = context;
-//                super.begin(camera, context);   // to set u_cameraPosition, etc.
-//            }
+            @Override
+            public void begin(Camera camera, RenderContext context) {
+                this.context = context;
+                super.begin(camera, context);   // to set u_cameraPosition, etc.
+                Color col = Settings.fogColor;
+                program.setUniformf("u_fogColor", col.r, col.g, col.b, col.a);
+                program.setUniformf("u_fogEquation", Settings.fogNear, Settings.fogFar,Settings.fogBase);
+            }
 
             @Override
             public void render(Renderable renderable, Attributes combinedAttributes) {
@@ -94,10 +94,7 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
 
                 UVSize uvDimensions = (UVSize)(renderable.userData);
                 program.setUniformf("u_step", uvDimensions.u, uvDimensions.v);
-                program.setUniformf("u_fogEquation", Settings.fogNear, Settings.fogFar,Settings.fogBase);
 
-                Color col = Settings.fogColor;
-                program.setUniformf("u_fogColor", col.r, col.g, col.b, col.a);
                 super.render(renderable, combinedAttributes);
             }
 
