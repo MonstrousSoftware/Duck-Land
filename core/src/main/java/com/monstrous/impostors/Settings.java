@@ -1,6 +1,7 @@
 package com.monstrous.impostors;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 
 import static com.badlogic.gdx.Application.ApplicationType.Desktop;
 
@@ -24,7 +25,7 @@ public class Settings {
     public static boolean   cascadedShadows = (Gdx.app.getType() == Desktop);       // breaks teaVM
 
     // Terrain
-    static public float     terrainChunkSize = 2048;
+    static public float     terrainChunkSize = 2048;        // terrain size in world units
     static public int       terrainChunkCacheSize = 100;
     static public boolean   debugTerrainChunkAllocation = false;
 
@@ -37,6 +38,13 @@ public class Settings {
 
 
     static public float     cameraFOV = 70f;
+    static public float     cameraFar = 8000f;
+
+
+    static public float     fogNear = 100f;
+    static public float     fogFar = 8000f;
+    static public float     fogBase = 1.0f;
+    static public Color     fogColor = Color.SKY;
 
     static public boolean   invertLook = false;
 

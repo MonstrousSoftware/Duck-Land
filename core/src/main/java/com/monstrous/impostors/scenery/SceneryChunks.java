@@ -20,7 +20,7 @@ import java.util.Map;
 
 
 public class SceneryChunks implements Disposable {
-    public static final int RANGE = 35;               // viewing range in chunks
+    public static final int RANGE = 35;    // viewing range in chunks
 
     private final Terrain terrain;
     private final int numTypes;

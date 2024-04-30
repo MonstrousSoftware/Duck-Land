@@ -6,6 +6,7 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -20,6 +21,7 @@ import com.monstrous.impostors.terrain.Terrain;
 import com.monstrous.impostors.terrain.TerrainDebug;
 import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.loaders.gltf.GLTFLoader;
+import net.mgsx.gltf.scene3d.attributes.FogAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRFloatAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRTextureAttribute;
@@ -76,7 +78,7 @@ public class GameScreen extends ScreenAdapter {
         camera = new PerspectiveCamera(Settings.cameraFOV, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         cameraDistance = 40f;
         camera.near = 1f;
-        camera.far = 8192f;
+        camera.far = Settings.cameraFar;
         camera.position.set(0, 20, 50);
 		camera.up.set(Vector3.Y);
 		camera.lookAt(Vector3.Zero);
@@ -142,6 +144,8 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
+        sceneManager.environment.set(new ColorAttribute(ColorAttribute.Fog, Settings.fogColor));
+        sceneManager.environment.set(new FogAttribute(FogAttribute.FogEquation).set(Settings.fogNear, Settings.fogFar, Settings.fogBase));
 
         sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
         groundPlane = new Scene(sceneAsset.scene, "groundPlane");

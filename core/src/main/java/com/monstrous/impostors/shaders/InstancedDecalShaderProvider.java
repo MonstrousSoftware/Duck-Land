@@ -3,6 +3,7 @@ package com.monstrous.impostors.shaders;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g3d.Attributes;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Renderable;
@@ -15,6 +16,7 @@ import com.badlogic.gdx.graphics.g3d.utils.RenderContext;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.monstrous.impostors.ImpostorBuilder;
+import com.monstrous.impostors.Settings;
 
 
 public class InstancedDecalShaderProvider extends DefaultShaderProvider {
@@ -72,20 +74,16 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 init(program, renderable);
                 ShaderProgram.prependVertexCode = null;
                 ShaderProgram.prependFragmentCode = null;
+
+
+
             }
 
-            @Override
-            public void begin(Camera camera, RenderContext context) {
-                this.context = context;
-                program.bind();
-                program.setUniformMatrix("u_projViewTrans", camera.combined);
-
-                float[] camPos = new float[3];
-                camPos[0] = camera.position.x;
-                camPos[1] = camera.position.y;
-                camPos[2] = camera.position.z;
-                program.setUniform3fv("u_camPos", camPos,0,3);
-            }
+//            @Override
+//            public void begin(Camera camera, RenderContext context) {
+//                this.context = context;
+//                super.begin(camera, context);   // to set u_cameraPosition, etc.
+//            }
 
             @Override
             public void render(Renderable renderable, Attributes combinedAttributes) {
@@ -96,7 +94,10 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
 
                 UVSize uvDimensions = (UVSize)(renderable.userData);
                 program.setUniformf("u_step", uvDimensions.u, uvDimensions.v);
+                program.setUniformf("u_fogEquation", Settings.fogNear, Settings.fogFar,Settings.fogBase);
 
+                Color col = Settings.fogColor;
+                program.setUniformf("u_fogColor", col.r, col.g, col.b, col.a);
                 super.render(renderable, combinedAttributes);
             }
 

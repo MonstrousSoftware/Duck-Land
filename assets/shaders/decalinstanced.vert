@@ -1,6 +1,7 @@
+precision highp float;
 
 uniform mat4 u_projViewTrans;
-uniform vec3 u_camPos;
+uniform vec4 u_cameraPosition;
 
 // dedicated to the use of the decal atlas
 uniform vec2     u_step;          // u width (fraction) horizontally per decal Y rotation, v height (fraction) horizontally per decal polar rotation
@@ -11,11 +12,12 @@ in vec2 a_texCoord0;
 in vec4 i_offset;           // world position of instance (xyz) + y-rotation (w)
 
 out vec2 texCoords;
+out vec3 v_position;
 
 // create a 3x3 rotation matrix to orient the vertex positions towards the camera
-mat3 calcLookAtMatrix(vec3 origin, vec3 target) {
+mat3 calcLookAtMatrix(vec3 cameraPosition, vec3 instancePosition) {
     vec3 worldUp = vec3(0.0, 1.0, 0.0);
-    vec3 fwd =      normalize(target - origin);
+    vec3 fwd =      normalize(instancePosition - cameraPosition);
     vec3 right =    normalize(cross(fwd, worldUp));
     vec3 up =       normalize(cross(right, fwd));
 
@@ -54,9 +56,11 @@ vec2 getUVoffset(vec3 camera, vec4 instance)
 
 
 void main () {
-    texCoords = a_texCoord0 + getUVoffset(u_camPos, i_offset);
+    texCoords = a_texCoord0 + getUVoffset(u_cameraPosition.xyz, i_offset);
 
-    mat3 decalRotMatrix = calcLookAtMatrix( u_camPos, i_offset.xyz);
+    mat3 decalRotMatrix = calcLookAtMatrix( u_cameraPosition.xyz, i_offset.xyz);
 
-    gl_Position = u_projViewTrans *   vec4(decalRotMatrix * a_position + i_offset.xyz, 1.0);
+    v_position = decalRotMatrix * a_position + i_offset.xyz;    // world coordinates
+
+    gl_Position = u_projViewTrans *   vec4(v_position, 1.0);
 }
