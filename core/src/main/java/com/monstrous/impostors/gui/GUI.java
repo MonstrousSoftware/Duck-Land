@@ -20,6 +20,7 @@ public class GUI {
     private Label totalInstancesLabel;
     private GameScreen screen;
     private FogSettingsWindow fogWindow;
+    private LightSettingsWindow lightWindow;
 
 
     public GUI( GameScreen screen ) {
@@ -28,6 +29,8 @@ public class GUI {
         stage = new Stage(new ScreenViewport());
         skin = new Skin(Gdx.files.internal("skin/uiskin.json"));
         fogWindow = new FogSettingsWindow("The Fogulator", skin, screen);
+        lightWindow = new LightSettingsWindow("Light Settings", skin, screen);
+
         rebuild();
     }
 
@@ -124,6 +127,15 @@ public class GUI {
                     stage.getHeight()-fogWindow.getHeight());
         } else
             fogWindow.remove();
+    }
+
+    public void showLightMenu(boolean mode){
+        if(mode) {
+            stage.addActor(lightWindow);
+            lightWindow.setPosition(stage.getWidth()-lightWindow.getWidth(),
+                stage.getHeight()-lightWindow.getHeight());
+        } else
+            lightWindow.remove();
     }
 
     public void dispose() {

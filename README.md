@@ -34,6 +34,7 @@ Demo Options:
 - M to toggle single instance view (use TAB to view the different LOD models)
 - F to toggle full screen mode
 - Y to toggle fog settings menu
+- L to toggle menu for light and shadow settings
 
 Web version can be played at: https://monstrous-software.itch.io/duck-land
 

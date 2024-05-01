@@ -22,7 +22,13 @@ public class Settings {
 
     // Lighting
     public static float     ambientLightLevel = 0.3f;
-    public static boolean   cascadedShadows = (Gdx.app.getType() == Desktop);       // breaks teaVM
+    public static float     directionalLightLevel = 1.0f;
+    public static boolean   cascadedShadows = false; //(Gdx.app.getType() == Desktop); // breaks teaVM
+    public static int       numCascades = 2;
+    public static float     cascadeSplitDivisor = 6f;
+    public static int       inverseShadowBias = 250;    // 1.0f/bias
+    public static float     shadowViewportSize = 600f;
+    static public boolean   showLightSettings = false;
 
     // Terrain
     static public float     terrainChunkSize = 2048;        // terrain size in world units

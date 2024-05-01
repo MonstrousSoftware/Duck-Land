@@ -33,7 +33,7 @@ public class GameScreen extends ScreenAdapter {
 
     private static final int SHADOW_MAP_SIZE = 8192; //4096;
 
-    private SceneManager sceneManager;
+    public SceneManager sceneManager;
     private SceneAsset sceneAsset;
     private Scene groundPlane;
     private PerspectiveCamera camera;
@@ -42,12 +42,12 @@ public class GameScreen extends ScreenAdapter {
     private Cubemap specularCubemap;
     private Texture brdfLUT;
     private SceneSkybox skybox;
-    private DirectionalShadowLight light;
+    public DirectionalShadowLight light;
     private CameraController camController;
     private float cameraDistance;
     private GUI gui;
     private ModelBatch modelBatch;
-    private CascadeShadowMap csm;
+    public CascadeShadowMap csm;
     private Terrain terrain;
     private TerrainDebug terrainDebug;
     private SceneryDebug sceneryDebug;
@@ -105,10 +105,27 @@ public class GameScreen extends ScreenAdapter {
         im.addProcessor(gui.stage);
         im.addProcessor(camController);
 
-        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 0.00001f));
+
+        setLighting();
+
+        // setup skybox
+        skybox = new SceneSkybox(environmentCubemap);
+        // don't use the skybox to get better fog blending with sky colour
+        //sceneManager.setSkyBox(skybox);
+
+        updateFogSettings();
+
+        sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
+        groundPlane = new Scene(sceneAsset.scene, "groundPlane");
+
+        modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
+    }
+
+    public void setLighting(){
+        sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 1f/Settings.inverseShadowBias));
 
         if(Settings.cascadedShadows) {
-            csm = new CascadeShadowMap(2);
+            csm = new CascadeShadowMap(Settings.numCascades);
             sceneManager.setCascadeShadowMap(csm);
         }
 
@@ -118,16 +135,17 @@ public class GameScreen extends ScreenAdapter {
 
         float farPlane = 300;
         float nearPlane = 0;
-        float VP_SIZE = 300f;
+        float VP_SIZE = Settings.shadowViewportSize;
         light = new DirectionalShadowLight(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE).setViewport(VP_SIZE,VP_SIZE,nearPlane,farPlane);
 
         light.direction.set(1, -3, 1).nor();
         light.color.set(Color.WHITE);
+        light.intensity = Settings.directionalLightLevel;
         sceneManager.environment.add(light);
 
         // setup quick IBL (image based lighting)
         IBLBuilder iblBuilder = IBLBuilder.createOutdoor(light);
-		environmentCubemap = iblBuilder.buildEnvMap(1024);
+        environmentCubemap = iblBuilder.buildEnvMap(1024);
         diffuseCubemap = iblBuilder.buildIrradianceMap(256);
         specularCubemap = iblBuilder.buildRadianceMap(10);
         iblBuilder.dispose();
@@ -140,16 +158,6 @@ public class GameScreen extends ScreenAdapter {
         sceneManager.environment.set(PBRCubemapAttribute.createSpecularEnv(specularCubemap));
         sceneManager.environment.set(PBRCubemapAttribute.createDiffuseEnv(diffuseCubemap));
 
-        // setup skybox
-        skybox = new SceneSkybox(environmentCubemap);
-        //sceneManager.setSkyBox(skybox);
-
-        updateFogSettings();
-
-        sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
-        groundPlane = new Scene(sceneAsset.scene, "groundPlane");
-
-        modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
     }
 
     public void updateFogSettings() {
@@ -178,6 +186,12 @@ public class GameScreen extends ScreenAdapter {
             gui.showFogMenu(Settings.showFogSettings);
             Gdx.input.setCursorCatched(!Settings.showFogSettings);
             guiMode = Settings.showFogSettings;
+        }
+        if(Gdx.input.isKeyJustPressed(Input.Keys.L)) {
+            Settings.showLightSettings = !Settings.showLightSettings;
+            gui.showLightMenu(Settings.showLightSettings);
+            Gdx.input.setCursorCatched(!Settings.showLightSettings);
+            guiMode = Settings.showLightSettings;
         }
         if(Gdx.input.isKeyJustPressed(Input.Keys.P))
             Settings.debugSceneryChunkAllocation = !Settings.debugSceneryChunkAllocation;
@@ -218,15 +232,6 @@ public class GameScreen extends ScreenAdapter {
             }
         }
 
-
-
-        // animate camera
-//        viewAngle += deltaTime;
-//        camera.position.x = cameraDistance * (float)Math.cos(viewAngle);
-//        camera.position.z = cameraDistance * (float)Math.sin(viewAngle);
-//        //camera.position.y = cameraDistance * (float) Math.sin((time*10f) * MathUtils.degreesToRadians);
-//        camera.position.y = .3f*cameraDistance;
-
         camera.up.set(Vector3.Y);
         if(!guiMode)
             camController.update( deltaTime );
@@ -235,7 +240,7 @@ public class GameScreen extends ScreenAdapter {
         scenery.update( deltaTime, camera, !Settings.skipChecksWhenCameraStill );
 
         if(Settings.cascadedShadows) {
-            csm.setCascades(sceneManager.camera, light, 0, 6f);
+            csm.setCascades(sceneManager.camera, light, 0, Settings.cascadeSplitDivisor);
         }
         else
             light.setCenter(camera.position); // keep shadow light on player so that we have shadows
@@ -340,6 +345,8 @@ public class GameScreen extends ScreenAdapter {
         terrainDebug.dispose();
         scenery.dispose();
         sceneAsset.dispose();
+        if(Settings.cascadedShadows)
+            csm.dispose();
     }
 
 }
