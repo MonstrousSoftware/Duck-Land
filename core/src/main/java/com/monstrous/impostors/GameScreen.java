@@ -142,7 +142,7 @@ public class GameScreen extends ScreenAdapter {
 
         // setup skybox
         skybox = new SceneSkybox(environmentCubemap);
-        sceneManager.setSkyBox(skybox);
+        //sceneManager.setSkyBox(skybox);
 
         updateFogSettings();
 

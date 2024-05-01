@@ -41,9 +41,9 @@ public class Settings {
     static public float     cameraFar = 8000f;
 
 
-    static public float     fogNear = 100f;
-    static public float     fogFar = 8000f;
-    static public float fogExponent = 1.0f;
+    static public float     fogNear = 500f;
+    static public float     fogFar = 6000f;
+    static public float     fogExponent = 1.2f;
     static public Color     fogColor = Color.SKY;
     static public boolean   showFogSettings = false;
 
