@@ -2,6 +2,7 @@ precision highp float;
 
 uniform mat4 u_projViewTrans;
 uniform vec4 u_cameraPosition;
+uniform vec3 u_fogEquation; // (near, far, exponent)
 
 // dedicated to the use of the decal atlas
 uniform vec2     u_step;          // u width (fraction) horizontally per decal Y rotation, v height (fraction) horizontally per decal polar rotation
@@ -12,7 +13,7 @@ in vec2 a_texCoord0;
 in vec4 i_offset;           // world position of instance (xyz) + y-rotation (w)
 
 out vec2 texCoords;
-out vec3 v_position;
+out float v_fog;
 
 // create a 3x3 rotation matrix to orient the vertex positions towards the camera
 mat3 calcLookAtMatrix(vec3 cameraPosition, vec3 instancePosition) {
@@ -60,7 +61,12 @@ void main () {
 
     mat3 decalRotMatrix = calcLookAtMatrix( u_cameraPosition.xyz, i_offset.xyz);
 
-    v_position = decalRotMatrix * a_position + i_offset.xyz;    // world coordinates
+    vec3 position = decalRotMatrix * a_position + i_offset.xyz;    // world coordinates
 
-    gl_Position = u_projViewTrans *   vec4(v_position, 1.0);
+    float eyeDistance = length(u_cameraPosition.xyz - position);
+    float fog = (eyeDistance - u_fogEquation.x) / (u_fogEquation.y - u_fogEquation.x);
+    fog = clamp(fog, 0.0, 1.0);
+    v_fog = pow(fog, u_fogEquation.z);
+
+    gl_Position = u_projViewTrans *   vec4(position, 1.0);
 }
