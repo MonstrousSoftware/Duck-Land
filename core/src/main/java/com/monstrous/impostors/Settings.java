@@ -43,8 +43,9 @@ public class Settings {
 
     static public float     fogNear = 100f;
     static public float     fogFar = 8000f;
-    static public float     fogBase = 1.0f;
+    static public float fogExponent = 1.0f;
     static public Color     fogColor = Color.SKY;
+    static public boolean   showFogSettings = false;
 
     static public boolean   invertLook = false;
 

@@ -1,5 +1,5 @@
 # Duck Land
-23/04/2024
+01/05/2024
 
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
 
@@ -33,6 +33,7 @@ Demo Options:
 - Z, X to change LOD distances
 - M to toggle single instance view (use TAB to view the different LOD models)
 - F to toggle full screen mode
+- Y to toggle fog settings menu
 
 Web version can be played at: https://monstrous-software.itch.io/duck-land
 

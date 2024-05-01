@@ -79,7 +79,7 @@ public class InstancedDecalShaderProvider extends DefaultShaderProvider {
                 super.begin(camera, context);   // to set u_cameraPosition, etc.
                 Color col = Settings.fogColor;
                 program.setUniformf("u_fogColor", col.r, col.g, col.b, col.a);
-                program.setUniformf("u_fogEquation", Settings.fogNear, Settings.fogFar,Settings.fogBase);
+                program.setUniformf("u_fogEquation", Settings.fogNear, Settings.fogFar,Settings.fogExponent);
             }
 
             @Override

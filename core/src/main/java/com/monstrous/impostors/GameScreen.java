@@ -19,7 +19,6 @@ import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
 import com.monstrous.impostors.terrain.TerrainDebug;
-import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.attributes.FogAttribute;
 import net.mgsx.gltf.scene3d.attributes.PBRCubemapAttribute;
@@ -54,6 +53,7 @@ public class GameScreen extends ScreenAdapter {
     private SceneryDebug sceneryDebug;
     public Scenery scenery;
     private int width, height;
+    private boolean guiMode = false;
 
 
     @Override
@@ -144,13 +144,17 @@ public class GameScreen extends ScreenAdapter {
         skybox = new SceneSkybox(environmentCubemap);
         sceneManager.setSkyBox(skybox);
 
-        sceneManager.environment.set(new ColorAttribute(ColorAttribute.Fog, Settings.fogColor));
-        sceneManager.environment.set(new FogAttribute(FogAttribute.FogEquation).set(Settings.fogNear, Settings.fogFar, Settings.fogBase));
+        updateFogSettings();
 
         sceneAsset = new GLTFLoader().load(Gdx.files.internal("models/duck-land.gltf"));
         groundPlane = new Scene(sceneAsset.scene, "groundPlane");
 
         modelBatch = new ModelBatch( new InstancedDecalShaderProvider() );      // to render the impostors
+    }
+
+    public void updateFogSettings() {
+        sceneManager.environment.set(new ColorAttribute(ColorAttribute.Fog, Settings.fogColor));
+        sceneManager.environment.set(new FogAttribute(FogAttribute.FogEquation).set(Settings.fogNear, Settings.fogFar, Settings.fogExponent));
     }
 
 
@@ -169,6 +173,12 @@ public class GameScreen extends ScreenAdapter {
         }
         if(Gdx.input.isKeyJustPressed(Input.Keys.T))
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
+        if(Gdx.input.isKeyJustPressed(Input.Keys.Y)) {
+            Settings.showFogSettings = !Settings.showFogSettings;
+            gui.showFogMenu(Settings.showFogSettings);
+            Gdx.input.setCursorCatched(!Settings.showFogSettings);
+            guiMode = Settings.showFogSettings;
+        }
         if(Gdx.input.isKeyJustPressed(Input.Keys.P))
             Settings.debugSceneryChunkAllocation = !Settings.debugSceneryChunkAllocation;
         if(Gdx.input.isKeyJustPressed(Input.Keys.M)) {
@@ -218,7 +228,8 @@ public class GameScreen extends ScreenAdapter {
 //        camera.position.y = .3f*cameraDistance;
 
         camera.up.set(Vector3.Y);
-        camController.update( deltaTime );
+        if(!guiMode)
+            camController.update( deltaTime );
 
         terrain.update( camera );
         scenery.update( deltaTime, camera, !Settings.skipChecksWhenCameraStill );

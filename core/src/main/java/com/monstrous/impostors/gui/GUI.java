@@ -16,24 +16,27 @@ public class GUI {
 
     private Label fpsLabel;
     private Label[] typeLabels;
-    private Label[] vertsLabels;
     private Label[] instancesLabels;
     private Label totalInstancesLabel;
     private GameScreen screen;
+    private FogSettingsWindow fogWindow;
 
 
     public GUI( GameScreen screen ) {
         this.screen = screen;
 
         stage = new Stage(new ScreenViewport());
-        skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
+        skin = new Skin(Gdx.files.internal("skin/uiskin.json"));
+        fogWindow = new FogSettingsWindow("The Fogulator", skin, screen);
         rebuild();
     }
 
     private void rebuild() {
         stage.clear();
 
-        String labelType  = "window";
+        showFogMenu(Settings.showFogSettings);
+
+        String labelType  = "default";
 
         Table screenTable = new Table();
         screenTable.setFillParent(true);
@@ -114,6 +117,14 @@ public class GUI {
         rebuild();
     }
 
+    public void showFogMenu(boolean mode){
+        if(mode) {
+            stage.addActor(fogWindow);
+            fogWindow.setPosition(stage.getWidth()-fogWindow.getWidth(),
+                    stage.getHeight()-fogWindow.getHeight());
+        } else
+            fogWindow.remove();
+    }
 
     public void dispose() {
         stage.dispose();
