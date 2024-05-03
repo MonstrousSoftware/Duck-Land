@@ -1,4 +1,4 @@
-package com.monstrous.impostors;
+package com.monstrous.impostors.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -10,8 +10,10 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.monstrous.impostors.Settings;
 import com.monstrous.impostors.gui.GUI;
 import com.monstrous.impostors.inputs.CameraController;
+import com.monstrous.impostors.inputs.KeyBinding;
 import com.monstrous.impostors.scenery.Scenery;
 import com.monstrous.impostors.scenery.SceneryDebug;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
@@ -33,6 +35,7 @@ public class GameScreen extends ScreenAdapter {
 
     private static final int SHADOW_MAP_SIZE = 8192; //4096;
 
+    private Main game;
     public SceneManager sceneManager;
     private SceneAsset sceneAsset;
     private Scene groundPlane;
@@ -55,6 +58,9 @@ public class GameScreen extends ScreenAdapter {
     private int width, height;
     private boolean guiMode = false;
 
+    public GameScreen(Main game) {
+        this.game = game;
+    }
 
     @Override
     public void show() {
@@ -170,32 +176,33 @@ public class GameScreen extends ScreenAdapter {
     public void render(float deltaTime) {
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)){
-            Gdx.app.exit();
+            game.setScreen(new MenuScreen(game));
+            return;
         }
 
-        if(Gdx.input.isKeyJustPressed(Input.Keys.TAB)){
+        if(Gdx.input.isKeyJustPressed(KeyBinding.CYCLE_LOD.getKeyCode())){
             if(Settings.lodLevel == Settings.LOD_LEVELS)
                 Settings.lodLevel = -1; // mixed mode
             else
                 Settings.lodLevel++;
         }
-        if(Gdx.input.isKeyJustPressed(Input.Keys.T))
+        if(Gdx.input.isKeyJustPressed(KeyBinding.TERRAIN_OVERLAY.getKeyCode()))
             Settings.debugTerrainChunkAllocation = !Settings.debugTerrainChunkAllocation;
-        if(Gdx.input.isKeyJustPressed(Input.Keys.Y)) {
+        if(Gdx.input.isKeyJustPressed(KeyBinding.FOG_MENU.getKeyCode())) {
             Settings.showFogSettings = !Settings.showFogSettings;
             gui.showFogMenu(Settings.showFogSettings);
             Gdx.input.setCursorCatched(!Settings.showFogSettings);
             guiMode = Settings.showFogSettings;
         }
-        if(Gdx.input.isKeyJustPressed(Input.Keys.L)) {
+        if(Gdx.input.isKeyJustPressed(KeyBinding.LIGHT_MENU.getKeyCode())) {
             Settings.showLightSettings = !Settings.showLightSettings;
             gui.showLightMenu(Settings.showLightSettings);
             Gdx.input.setCursorCatched(!Settings.showLightSettings);
             guiMode = Settings.showLightSettings;
         }
-        if(Gdx.input.isKeyJustPressed(Input.Keys.P))
+        if(Gdx.input.isKeyJustPressed(KeyBinding.SCENERY_OVERLAY.getKeyCode()))
             Settings.debugSceneryChunkAllocation = !Settings.debugSceneryChunkAllocation;
-        if(Gdx.input.isKeyJustPressed(Input.Keys.M)) {
+        if(Gdx.input.isKeyJustPressed(KeyBinding.SINGLE_INSTANCE.getKeyCode())) {
             Settings.singleInstance = !Settings.singleInstance;
             if(Settings.singleInstance) {
                 camera.position.set(0, 20, 50);
@@ -205,14 +212,14 @@ public class GameScreen extends ScreenAdapter {
                 Settings.lodLevel = -1;
         }
 
-        if(Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+        if(Gdx.input.isKeyJustPressed(KeyBinding.INCREASE_LOD_DISTANCE.getKeyCode())) {
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
                 Settings.lodDistances[lod] = 1.1f * Settings.lodDistances[lod];
             Settings.dynamicLODAdjustment = false;
             Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
             scenery.update( deltaTime, camera, true );
         }
-        if(Gdx.input.isKeyJustPressed(Input.Keys.X)) {
+        if(Gdx.input.isKeyJustPressed(KeyBinding.DECREASE_LOD_DISTANCE.getKeyCode())) {
             for(int lod = 0; lod < Settings.LOD_LEVELS; lod++)
                 Settings.lodDistances[lod] = 0.9f * Settings.lodDistances[lod];
             Gdx.app.log("Update LOD1 distance to:", ""+Settings.lodDistances[0]);
@@ -220,7 +227,7 @@ public class GameScreen extends ScreenAdapter {
             scenery.update( deltaTime, camera, true );
         }
         // Use F11 key to toggle full screen / windowed screen
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+        if (Gdx.input.isKeyJustPressed(KeyBinding.TOGGLE_FULLSCREEN.getKeyCode())) {
             if (!Gdx.graphics.isFullscreen()) {
                 width = Gdx.graphics.getWidth();
                 height = Gdx.graphics.getHeight();

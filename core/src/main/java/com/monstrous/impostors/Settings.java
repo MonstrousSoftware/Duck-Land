@@ -8,6 +8,8 @@ import static com.badlogic.gdx.Application.ApplicationType.Desktop;
 public class Settings {
 
 
+    public static String    title = "Duck Land";
+
     // Level of Detail
     public static int       LOD_LEVELS = 3;           // must match the nr of glb files provided (e.g. <name>-lod0.glb)
     public static int       lodLevel = 3;

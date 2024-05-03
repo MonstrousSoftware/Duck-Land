@@ -1,29 +1,16 @@
 package com.monstrous.impostors.inputs;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.IntIntMap;
 import com.monstrous.impostors.Settings;
 import com.monstrous.impostors.terrain.Terrain;
 
-import java.util.Random;
-
 public class CameraController extends InputAdapter {
 
     private final float WALK_SPEED = 150f;
-
-    public int forwardKey = Input.Keys.W;
-    public int backwardKey = Input.Keys.S;
-    public int upKey = Input.Keys.E;
-    public int downKey = Input.Keys.Q;
-    public int leftKey = Input.Keys.A;
-    public int rightKey = Input.Keys.D;
-    public int turboKey = Input.Keys.SPACE;
-
 
     private final PerspectiveCamera camera;
     private final Terrain terrain;
@@ -42,38 +29,38 @@ public class CameraController extends InputAdapter {
     }
 
 
-    public void update (float deltaTime ) {
+    public void update(float deltaTime) {
         fwdHorizontal.set(camera.direction).y = 0;
         fwdHorizontal.nor();
 
-
-        if (keys.containsKey(forwardKey)) {
+        if (keys.containsKey(KeyBinding.FORWARD.getKeyCode())) {
             speed = WALK_SPEED;
         }
-        if (keys.containsKey(backwardKey)) {
+        if (keys.containsKey(KeyBinding.BACK.getKeyCode())) {
             speed = -WALK_SPEED;
         }
-        if( keys.containsKey(turboKey)) {
+        if (keys.containsKey(KeyBinding.TURBO.getKeyCode())) {
             speed = WALK_SPEED * 5f;
-        }
-        else if(!keys.containsKey(forwardKey) && !keys.containsKey(turboKey) && Math.abs(speed) > 0){
-            speed -= speed * 10f *deltaTime;
-            if(Math.abs(speed) < 1f)
+        } else if (!keys.containsKey(KeyBinding.FORWARD.getKeyCode()) &&
+            !keys.containsKey(KeyBinding.TURBO.getKeyCode()) &&
+            Math.abs(speed) > 0) {
+            speed -= speed * 10f * deltaTime;
+            if (Math.abs(speed) < 1f)
                 speed = 0;
         }
 
-        if (keys.containsKey(upKey)) {
-            eyeHeight += 30f*deltaTime;
+        if (keys.containsKey(KeyBinding.UP.getKeyCode())) {
+            eyeHeight += 30f * deltaTime;
         }
-        if (keys.containsKey(downKey)) {
-            if(eyeHeight > 10f || Settings.singleInstance)
-                eyeHeight -= 30f*deltaTime;
+        if (keys.containsKey(KeyBinding.DOWN.getKeyCode())) {
+            if (eyeHeight > 10f || Settings.singleInstance)
+                eyeHeight -= 30f * deltaTime;
         }
 
-        if (keys.containsKey(leftKey)) {
+        if (keys.containsKey(KeyBinding.LEFT.getKeyCode())) {
             camera.direction.rotate(camera.up, deltaTime * 30f);
         }
-        if (keys.containsKey(rightKey)) {
+        if (keys.containsKey(KeyBinding.RIGHT.getKeyCode())) {
             camera.direction.rotate(camera.up, -deltaTime * 30f);
         }
 
@@ -86,16 +73,17 @@ public class CameraController extends InputAdapter {
     }
 
     @Override
-    public boolean keyDown (int keycode) {
+    public boolean keyDown(int keycode) {
         keys.put(keycode, keycode);
         return true;
     }
 
     @Override
-    public boolean keyUp (int keycode) {
+    public boolean keyUp(int keycode) {
         keys.remove(keycode, 0);
         return true;
     }
+
 
     @Override
     public boolean mouseMoved(int screenX, int screenY) {
