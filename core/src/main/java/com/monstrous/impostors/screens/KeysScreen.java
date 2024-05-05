@@ -15,7 +15,6 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.monstrous.impostors.inputs.KeyBinding;
 
-
 // key bindings menu
 // shows key bindings and allows the user to modify them
 
@@ -27,6 +26,7 @@ public class KeysScreen extends InputAdapter implements Screen {
     private Skin skin;
     private TextButton pressedButton;
     private KeyBinding selectedBinding;
+    private Label debugLabel;
 
     public KeysScreen(Main game) {
         this.game = game;
@@ -80,15 +80,19 @@ public class KeysScreen extends InputAdapter implements Screen {
 
         }
         // Note: Input.Keys.toString() follows US keyboard layout in naming keys
-        // Can we use GLFW.glfwGetKeyName ?
+        // It should really present the name following the regional keyboard setting.
+        // Waiting for libGDX issue #6962 to be resolved.
 
         TextButton reset = new TextButton(" RESET ", skin);
         TextButton okay = new TextButton(" OK ", skin);
 
+        debugLabel = new Label("To modify a key binding, click a button", skin);
+
         screenTable.top();
-        screenTable.add(keyTable).pad(100).row();
-        screenTable.add(reset).width(200).pad(17).row();
-        screenTable.add(okay).width(200).pad(17).row();
+        screenTable.add(keyTable).pad(50).row();
+        screenTable.add(debugLabel).pad(20).row();
+        screenTable.add(reset).width(200).pad(10).row();
+        screenTable.add(okay).width(200).pad(10).row();
         screenTable.pack();
 
         if(fade) {
@@ -123,17 +127,19 @@ public class KeysScreen extends InputAdapter implements Screen {
         pressedButton.setText("???");
         pressedButton.setColor(Color.RED);
         selectedBinding = binding;
+        debugLabel.setText("Press the key to assign to this action (ESC to cancel)");
     }
 
     @Override
     public boolean keyDown(int keycode) {
         if(selectedBinding == null)
             return false;
+        //debugLabel.setText("keycode : "+keycode);
         if(keycode != Input.Keys.ESCAPE) {
             selectedBinding.setKeyBinding(keycode);
             removeDupes(selectedBinding, keycode);
         }
-        pressedButton.setText(Input.Keys.toString(selectedBinding.getKeyCode()));
+        pressedButton.setText(Input.Keys.toString(keycode));
         pressedButton.setColor(Color.WHITE);
         selectedBinding = null;
 
