@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.utils.MeshBuilder;
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
@@ -22,6 +23,8 @@ import com.monstrous.impostors.utils.Noise;
 import net.mgsx.gltf.scene3d.attributes.PBRColorAttribute;
 import net.mgsx.gltf.scene3d.scene.Scene;
 
+import static com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute.createDiffuse;
+
 
 public class TerrainChunk implements Disposable {
 
@@ -29,7 +32,6 @@ public class TerrainChunk implements Disposable {
     public static final float SCALE  = Settings.terrainChunkSize;       // terrain size in world units
     public static final float AMPLITUDE  = 400f; // amplitude in world units
     public static final float GRID_SCALE = 64;      // how many Perlin points across the map
-
 
     public GridPoint2 coord;
     public int creationTime;            // when was chunk created? used to delete old chunks when needed
@@ -65,8 +67,10 @@ public class TerrainChunk implements Disposable {
         }
 
         Material material =  new Material();
-        //material.set(PBRTextureAttribute.createBaseColorTexture(terrainTexture));
-        material.set(PBRColorAttribute.createBaseColorFactor(new Color(0x529E5BFF)));
+        if(Settings.usePBRshader)
+            material.set(PBRColorAttribute.createBaseColorFactor(new Color(0x529E5BFF)));
+        else
+            material.set(ColorAttribute.createDiffuse(new Color(0x425A47FF)));
         model = makeGridModel(heightMap, SCALE, MAP_SIZE, GL20.GL_TRIANGLES, material);
         modelInstance =  new ModelInstance(model, position);
 

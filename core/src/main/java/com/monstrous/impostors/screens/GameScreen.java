@@ -7,6 +7,8 @@ import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider;
+import com.badlogic.gdx.graphics.g3d.utils.DepthShaderProvider;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -17,6 +19,7 @@ import com.monstrous.impostors.inputs.KeyBinding;
 import com.monstrous.impostors.scenery.Scenery;
 import com.monstrous.impostors.scenery.SceneryDebug;
 import com.monstrous.impostors.shaders.InstancedDecalShaderProvider;
+import com.monstrous.impostors.shaders.InstancedDefaultShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRDepthShaderProvider;
 import com.monstrous.impostors.shaders.InstancedPBRShaderProvider;
 import com.monstrous.impostors.terrain.Terrain;
@@ -77,8 +80,12 @@ public class GameScreen extends ScreenAdapter {
         Gdx.input.setCursorPosition(Gdx.graphics.getWidth() / 2, Gdx.graphics.getHeight() / 2);
 
         // create scene manager
-        // but use our own shader providers for PBR shaders that support instanced meshes
-        sceneManager = new SceneManager( new InstancedPBRShaderProvider(), new InstancedPBRDepthShaderProvider() );
+        // but use our own shader providers for PBR or default shaders that support instanced meshes
+        //
+        if(Settings.usePBRshader)
+            sceneManager = new SceneManager( new InstancedPBRShaderProvider(), new InstancedPBRDepthShaderProvider() );
+        else
+            sceneManager = new SceneManager( new InstancedDefaultShaderProvider(), new InstancedPBRDepthShaderProvider() );
 
         // setup camera
         camera = new PerspectiveCamera(Settings.cameraFOV, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -226,7 +233,7 @@ public class GameScreen extends ScreenAdapter {
             Settings.dynamicLODAdjustment = false;
             scenery.update( deltaTime, camera, true );
         }
-        // Use F11 key to toggle full screen / windowed screen
+        // Use key to toggle full screen / windowed screen
         if (Gdx.input.isKeyJustPressed(KeyBinding.TOGGLE_FULLSCREEN.getKeyCode())) {
             if (!Gdx.graphics.isFullscreen()) {
                 width = Gdx.graphics.getWidth();
@@ -255,14 +262,16 @@ public class GameScreen extends ScreenAdapter {
         sceneManager.getRenderableProviders().clear();
 
         // terrain chunks are taken directly from the Terrain class
-        if(!Settings.singleInstance) {
+        if(Settings.singleInstance) {
+            // if we are viewing a single instance, just add a little green tile to stand on
+            sceneManager.addScene(groundPlane, false);
+        } else {
+            // add visible terrain chunks
             for (Scene scene : terrain.getScenes())
                 sceneManager.addScene(scene, false);
-        } else {
-            sceneManager.addScene(groundPlane, false);
         }
 
-        // add scenery
+        // add scenery (instanced objects)
         for(Scene scene : scenery.getScenes())
             sceneManager.addScene(scene, false);
 

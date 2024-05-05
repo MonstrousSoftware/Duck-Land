@@ -61,8 +61,6 @@ public class Scenery implements SceneryInterface, Disposable {
         for(int type = 0; type < numTypes; type++ ) {
             for (int lod = 0; lod < Settings.LOD_LEVELS + 1; lod++) {
                 statistics.setVertexCount(type, lod, lodModels.get(type).getVertexCount(lod));
-//                statistics[lod] = new Statistics();
-//                statistics[lod].vertexCount = lodModels.first().getVertexCount(lod);
             }
         }
 
@@ -76,7 +74,7 @@ public class Scenery implements SceneryInterface, Disposable {
     public Array<Scene> getScenes(){
         scenes.clear();
 
-        // for the sake of debug options we rebuild this as needed
+        // for the sake of debug options we rebuild this as needed to contain all LOD levels or only a specific one
         for(LodModel lodModel : lodModels) {
             Scene[] lodScenes = lodModel.getScenes();
 

@@ -24,7 +24,7 @@ public enum KeyBinding {
     LIGHT_MENU ("Toggle light and shadows menu", Keys.L);
 
     private final String description;      // action
-    private int defaultKeyCode;     // original code, used on reset
+    private final int defaultKeyCode;     // original code, used on reset
     private int keyCode;            // can be user configured
 
     KeyBinding(String description, int defaultKeyCode) {

@@ -58,4 +58,8 @@ public class Settings {
     static public boolean   invertLook = false;
 
     static public boolean   singleInstance = false;
+
+    static public boolean   usePBRshader = true;   // experimental: set to 'false' to use instanced default shader to get a higher frame rate
+                                                    // beware directional lighting and shadows are defined for PBR only and need to be
+                                                    // adapted
 }

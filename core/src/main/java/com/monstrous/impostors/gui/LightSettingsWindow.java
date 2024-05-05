@@ -135,7 +135,8 @@ public class LightSettingsWindow extends Window {
             public void changed(ChangeEvent event, Actor actor) {
                 Settings.inverseShadowBias = (int) biasSlider.getValue();
                 biasValue.setText( Settings.inverseShadowBias);
-                screen.sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 1f/Settings.inverseShadowBias));
+                if(Settings.usePBRshader)
+                    screen.sceneManager.environment.set(new PBRFloatAttribute(PBRFloatAttribute.ShadowBias, 1f/Settings.inverseShadowBias));
 
             }
         });

@@ -280,7 +280,7 @@ public class ImpostorBuilder {
         rect.width = 1 + max.x - min.x;
         rect.height = 1 + max.y - min.y;
 
-        Gdx.app.log("rect", "rect:" + rect.toString());
+        Gdx.app.log("rect", "rect:" + rect);
 
     }
 
