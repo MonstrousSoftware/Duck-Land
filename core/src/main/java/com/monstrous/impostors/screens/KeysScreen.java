@@ -139,7 +139,7 @@ public class KeysScreen extends InputAdapter implements Screen {
             selectedBinding.setKeyBinding(keycode);
             removeDupes(selectedBinding, keycode);
         }
-        pressedButton.setText(Input.Keys.toString(keycode));
+        pressedButton.setText(Input.Keys.toString(selectedBinding.getKeyCode()));
         pressedButton.setColor(Color.WHITE);
         selectedBinding = null;
 

@@ -55,7 +55,7 @@ public enum KeyBinding {
         Preferences prefs = Gdx.app.getPreferences(Settings.title);
         for(KeyBinding binding : values()){
             // only save key binding that differ from the default
-            //if(binding.keyCode != binding.defaultKeyCode)
+            if(binding.keyCode != binding.defaultKeyCode)
                 prefs.putInteger( String.valueOf(binding), binding.keyCode);
         }
         prefs.flush();  // save to file

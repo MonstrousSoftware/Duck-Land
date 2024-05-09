@@ -1,5 +1,6 @@
 package com.monstrous.impostors.terrain;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -40,6 +41,8 @@ public class TerrainDebug {
         pixmap.drawPixel(3,0);
 
         texture = new Texture(pixmap);
+        pixmap.dispose();       // we don't need the pixmap anymore
+
         textureRegionChunk = new TextureRegion(texture, 0,0,1,1);
         textureRegionPlayer = new TextureRegion(texture, 1,0,1,1);
         textureRegionCam = new TextureRegion(texture, 2,0,1,1);

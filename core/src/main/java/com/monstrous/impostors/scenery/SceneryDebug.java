@@ -48,6 +48,7 @@ public class SceneryDebug {
         pixmap.drawPixel(5,0);
 
         texture = new Texture(pixmap);
+        pixmap.dispose();
         textureRegionChunk0 = new TextureRegion(texture, 0,0,1,1);
         textureRegionChunk1 = new TextureRegion(texture, 1,0,1,1);
         textureRegionChunk2 = new TextureRegion(texture, 2,0,1,1);
