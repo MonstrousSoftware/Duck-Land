@@ -3,7 +3,6 @@ package com.monstrous.impostors.terrain;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
@@ -23,7 +22,6 @@ import com.monstrous.impostors.utils.Noise;
 import net.mgsx.gltf.scene3d.attributes.PBRColorAttribute;
 import net.mgsx.gltf.scene3d.scene.Scene;
 
-import static com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute.createDiffuse;
 
 
 public class TerrainChunk implements Disposable {
@@ -39,7 +37,6 @@ public class TerrainChunk implements Disposable {
     public BoundingBox bbox;
 
     private Model model;
-    private static Texture terrainTexture;         //  shared between chunks
     private ModelInstance modelInstance;
     private Scene scene;
     private float[][] heightMap;
@@ -59,12 +56,6 @@ public class TerrainChunk implements Disposable {
 
 
         heightMap = noise.generatePerlinMap(xoffset*MAP_SIZE, yoffset*MAP_SIZE, MAP_SIZE, MAP_SIZE,  GRID_SCALE, AMPLITUDE);
-
-        if(terrainTexture == null) {
-            terrainTexture = new Texture(Gdx.files.internal("textures/ground/smooth+sand+dunes-512x512.jpg"), true);
-            terrainTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-            terrainTexture.setFilter(Texture.TextureFilter.MipMap, Texture.TextureFilter.Nearest);
-        }
 
         Material material =  new Material();
         if(Settings.usePBRshader)
