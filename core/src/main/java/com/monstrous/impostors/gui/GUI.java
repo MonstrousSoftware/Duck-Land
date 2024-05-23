@@ -1,6 +1,7 @@
 package com.monstrous.impostors.gui;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -17,6 +18,7 @@ public class GUI {
     private Label[] typeLabels;
     private Label[] instancesLabels;
     private Label totalInstancesLabel;
+    private Label debugMessage;
     private GameScreen screen;
     private FogSettingsWindow fogWindow;
     private LightSettingsWindow lightWindow;
@@ -30,6 +32,7 @@ public class GUI {
         fogWindow = new FogSettingsWindow("The Fogulator", skin, screen);
         lightWindow = new LightSettingsWindow("Light Settings", skin, screen);
 
+        debugMessage = new Label("Ready.", skin, "default");
         rebuild();
     }
 
@@ -66,6 +69,8 @@ public class GUI {
         }
         screenTable.row();
 
+
+
 //        vertsLabels = new Label[Settings.LOD_LEVELS+1];
 //        screenTable.add(new Label("vertices: ", skin, type)).left().pad(5);
 //        for(int lod = 0; lod < Settings.LOD_LEVELS+1; lod++) {
@@ -87,10 +92,18 @@ public class GUI {
             screenTable.row();
         }
 
+
+        debugMessage.setColor(Color.RED);
+        screenTable.add(debugMessage);
+
         screenTable.bottom().left();
         screenTable.pack();
 
         stage.addActor(screenTable);
+    }
+
+    public void setDebugMessage(String string){
+        debugMessage.setText(string);
     }
 
     private void updateLabels(){

@@ -10,6 +10,6 @@ public class Main extends Game {
     public void create() {
         Gdx.app.log("LibGDX version: ", Version.VERSION);
         KeyBinding.load();
-        setScreen(new MenuScreen(this));
+        setScreen(new GameScreen(this));    // TMP
     }
 }

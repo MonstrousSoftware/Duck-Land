@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider;
 import com.badlogic.gdx.graphics.g3d.utils.DepthShaderProvider;
+import com.badlogic.gdx.graphics.profiling.GLErrorListener;
+import com.badlogic.gdx.graphics.profiling.GLProfiler;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -60,17 +62,31 @@ public class GameScreen extends ScreenAdapter {
     public Scenery scenery;
     private int width, height;
     private boolean guiMode = false;
+    private GLProfiler glProfiler;
+    private int errorCounter = 0;
 
     public GameScreen(Main game) {
         this.game = game;
     }
 
+    final GLErrorListener customListener = new GLErrorListener() {
+        @Override
+        public void onError (int error) {
+            errorCounter++;
+            gui.setDebugMessage(errorCounter+" : GL error code: "+String.format("%X", error) );
+        }
+    };
+
+
     @Override
     public void show() {
+
+
 
         if (Gdx.gl30 == null) {
             throw new GdxRuntimeException("GLES 3.0 profile required for this programme.");
         }
+
 
 
 
@@ -107,7 +123,15 @@ public class GameScreen extends ScreenAdapter {
         sceneryDebug = new SceneryDebug( scenery );
 
 
+
         gui = new GUI( this );
+        gui.setDebugMessage("Okay.");
+
+        glProfiler = new GLProfiler(Gdx.graphics);
+        glProfiler.enable();
+        glProfiler.setListener(customListener); //GLErrorListener.LOGGING_LISTENER);
+
+        Gdx.gl.glClear(42);
 
         camera.position.set(0, terrain.getHeight(0, 50) + 10, 50);
 

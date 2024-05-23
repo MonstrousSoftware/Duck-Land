@@ -63,7 +63,7 @@ public class LightSettingsWindow extends Window {
         add(new Label("directional light:", skin)).left();add(DLValue); row();
         add(dlSlider).colspan(2).width(400f); row();
 
-        if (Gdx.app.getType() == Desktop) {
+        //if (Gdx.app.getType() == Desktop) {
             final CheckBox CSMcheckBox = new CheckBox("cascaded shadow maps", skin);
             CSMcheckBox.setChecked(Settings.cascadedShadows);
             CSMcheckBox.addListener(new ChangeListener() {
@@ -124,7 +124,7 @@ public class LightSettingsWindow extends Window {
             row();
             add(csSlider).colspan(2).width(400f);
             row();
-        }
+       //}
 
         final Label biasValue = new Label("", skin);
         biasValue.setText( Settings.inverseShadowBias);
